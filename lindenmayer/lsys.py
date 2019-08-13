@@ -4,6 +4,7 @@
 
       - The object oriented approach to programming
       - Lindenmayer systems.  Amazing variety from simple rules.
+      - Simple page layout with bounding boxes
       - Using one program to generate code for another (postscript output)
 
     You also get to see some awesome curves !
@@ -12,6 +13,10 @@
     Copyright: 2019 George Douglas
     SPDX-License-Identifier: MIT
 """
+
+# FIXME:  The "plants" are drawing outside of the box
+
+# FIXME:  Add some color to make look better
 
 #------------------------------------------------------------------------------
 # tuneable parameters
@@ -122,18 +127,22 @@ class AdobeDSC :
 """
 
 class LSys :
-  def __init__(self,Title,Refs,Angle,Rules,PostRules={}) :
-    self._Title = Title
-    self._Refs = Refs
-    self._Angle = Angle
-    self._Rules = Rules
-    self._PostRules = PostRules
+  def __init__(self,**props) :
+    # Copy keyword args to named variables
+    # These are required
+    self._Title = props['Title']
+    self._Angle = props['Angle']
+    self._Rules = props['Rules']
+    # These are optional
+    self._Refs = props.get('Refs',[])
+    self._PostRules = props.get('PostRules',{})
+    self._MaxOrder = props.get('MaxOrder',6)
     # all possible actions
     self._actions = "Ff+-[]"
     # all actions that perform drawing
     self._drawing_actions = "F"
 
-  def ElabCore(rules,start,order)
+  def ElabCore(self,rules,start,order) :
     """
       Use two lists.  Remove item from 'old' list,
       if a rule, then do rule substitution
@@ -156,6 +165,9 @@ class LSys :
     If the start string does drawing, one is subtracted from the order.
     The goal is to make order 1 to produce the simplest non-null drawing.
     An elaboration of order 0 always returns the start string.
+
+    The post rule substitution is used to allow use of rules from
+    sources that presume implicit drawing on rules other than F.
     """
 
     # decrement order if start does drawing action
@@ -164,9 +176,17 @@ class LSys :
     if 0 < len(drawset.intersection(startset)) :
       order -= 1
 
-    new = ElabCore(self._Rules,self._Rules['Start']),order)
+    # do rule substition
+    ecore = self.ElabCore(self._Rules,self._Rules['Start'],order)
 
-
+    # do post rule substitution
+    # FIXME this is slower than it should be, remove this special case
+    pr = self._PostRules
+    if 0 != len(pr) :
+      epost = self.ElabCore(pr,ecore,1)
+    else:
+      epost = ecore
+    return epost
 
   def Minimize(self,s) :
     """
@@ -319,7 +339,7 @@ class LSys :
     psl = self.DrawBasic(1,bb['l'])
     psc = self.DrawBasic(2,bb['c'])
     psr = self.DrawBasic(3,bb['r'])
-    psm = self.DrawBasic(6,bb['m'])
+    psm = self.DrawBasic(self._MaxOrder,bb['m'])
     pst = self.DrawTop()
     return psl+psc+psr+psm+pst
 
@@ -448,6 +468,7 @@ Curves = dict(
       L = "LFRFL-F-RFLFR+F+LFRFL",
       R = "RFLFR+F+LFRFL-F-RFLFR",
     ),
+    MaxOrder = 4,
   ),
 
   Gosper = LSys(
@@ -464,8 +485,9 @@ Curves = dict(
     ),
     PostRules = dict(
       A = "F",
-      B = "F"
-    )
+      B = "F",
+    ),
+    MaxOrder = 4,
   ),
 )
 
