@@ -1,0 +1,10 @@
+Representation as Lindenmayer system
+The Hilbert Curve can be expressed by a rewrite system (L-system).
+
+Alphabet : A, B
+Constants : F + −
+Axiom : A
+Production rules:
+A → − B F + A F A + F B −
+B → + A F − B F B − F A +
+Here, "F" means "draw forward", "−" means "turn left 90°", "+" means "turn right 90°" (see turtle graphics), and "A" and "B" are ignored during drawing.
