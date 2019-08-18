@@ -55,7 +55,7 @@ class AdobeDSC :
     Accept one page at a time and write to output stream.
     Add DSC at beginning of document and for each page.
   """
-  def __init__(self,npages,ostream) :
+  def __init__(self,title,npages,ostream) :
 
     self._npages = npages
     self._page = 1
@@ -68,6 +68,7 @@ class AdobeDSC :
     date = datetime.datetime.now().isoformat()
     doc_prefix = (
       f"%!PS-Adobe-3.0\n"
+      f"%%Title: {title}\n"
       f"%%Creator: 'lsys.py' Copyright 2019 Bert Douglas\n"
       f"%%CreationDate: {date}\n"
       f"%%BoundingBox: {x0} {y0} {x1} {y1}\n"
@@ -131,14 +132,13 @@ class LSys :
     # Copy keyword args to named variables
     # These are required
     self._Title = props['Title']
-    self._Angle = props['Angle']
     self._Rules = props['Rules']
     # These are optional
     self._Refs = props.get('Refs',[])
     self._PostRules = props.get('PostRules',{})
-    self._MaxOrder = props.get('MaxOrder',6)
+    self._Rules['ShowOrder'] = props['Rules'].get('ShowOrder',[1,2,3,6])
     # all possible actions
-    self._actions = "Ff+-[]"
+    self._actions = "Ff+-[]|"
     # all actions that perform drawing
     self._drawing_actions = "F"
 
@@ -212,7 +212,7 @@ class LSys :
     ps = []
     # direction and angle step
     d = 0.0
-    angle = self._Angle * math.pi / 180.0
+    angle = -self._Rules['Angle'] * math.pi / 180.0
     # current position and bounding box
     x = y = x0 = y0 = x1 = y1 = 0.0
     # do the actions
@@ -223,8 +223,6 @@ class LSys :
         xs = round(xs,15);  ys = round(ys,15)
         x  += xs;           y  += ys
         x  = round(x,15);   y  = round(y,15)
-        x0 = min(x0,x);     y0 = min(y0,y)
-        x1 = max(x1,x);     y1 = max(y1,y)
         ps += [f"{xs} {ys} rlineto\n"]
       elif "+" == action:
         d += angle
@@ -232,13 +230,22 @@ class LSys :
         d -= angle
       elif "[" == action:
         stack.append((d,x,y))
+        #pp((d,x,y))
+        #pp(stack)
       elif "]" == action:
-        (d,x,y) = stack.pop()
-        ps += [f"{x} {y} moveto\n"]
+        (d,xp,yp) = stack.pop()
+        #pp(stack)
+        #pp((d,xp,yp))
+        ps += [f"{xp-x} {yp-y} rmoveto\n"]
+        x = xp;  y = yp;
       elif "|" == action:
         d += math.pi
       else:
         die(f"Unimplemented action: '{action}'")
+
+      # maintain bounding box
+      x0 = min(x0,x);     y0 = min(y0,y)
+      x1 = max(x1,x);     y1 = max(y1,y)
 
     # adjust bounding box so it can't have zero size
     # treat as if it has 1 step, keep center at zero
@@ -265,8 +272,8 @@ class LSys :
     sy = (py1-py0)/(ay1-ay0)
     scale = min(sx,sy) * 0.9
 
-    pp(abb); pp(pbb)
-    pp(sx); pp(sy); pp(scale)
+    #pp(abb); pp(pbb)
+    #pp(sx); pp(sy); pp(scale)
 
     # find starting position
     x = (px0+px1)/2.0 - scale*(ax0+ax1)/2.0
@@ -320,7 +327,7 @@ class LSys :
     # all box edges as fraction of page size
     #      0     1     2     3
     xf = [0.05, 0.35, 0.65, 0.95]
-    yf = [0.05, 0.55, 0.77, 0.95]
+    yf = [0.03, 0.58, 0.80, 0.97]
     # scale to page size
     x = [s * PARMS['pagewidth']  for s in xf]
     y = [s * PARMS['pageheight'] for s in yf]
@@ -336,12 +343,19 @@ class LSys :
 
   def DrawFancy(self):
     bb = self.LayoutBoxes()
-    psl = self.DrawBasic(1,bb['l'])
-    psc = self.DrawBasic(2,bb['c'])
-    psr = self.DrawBasic(3,bb['r'])
-    psm = self.DrawBasic(self._MaxOrder,bb['m'])
+    so = self._Rules['ShowOrder']
+    psl = self.DrawBasic(so[0],bb['l'])
+    psc = self.DrawBasic(so[1],bb['c'])
+    psr = self.DrawBasic(so[2],bb['r'])
+    psm = self.DrawBasic(so[3],bb['m'])
     pst = self.DrawTop()
-    return psl+psc+psr+psm+pst
+    psb = []
+    # draw outlines of layout boxes
+    if False:
+      psb = self.DrawBoxOutlines()
+    else:
+      psb = []
+    return psl+psc+psr+psm+pst+psb
 
   def DrawTop(self):
     """
@@ -411,8 +425,8 @@ Curves = dict(
     Refs = [
       "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
     ],
-    Angle = 90.0,
     Rules = dict(
+      Angle = 90.0,
       Start = "X",
       X = "-YF+XFX+FY-",
       Y = "+XF-YFY-FX+",
@@ -424,35 +438,10 @@ Curves = dict(
     Refs = [
       "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
     ],
-    Angle = 60.0,
     Rules = dict(
+      Angle = 60.0,
       Start = "+F--F--F",
       F = "F+F--F+F",
-    ),
-  ),
-
-  Plant1 = LSys(
-    Title = "Plant 1",
-    Refs = [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-    ],
-    Angle = 25.0,
-    Rules = dict(
-      Start = "X",
-      X = "F+[[X]-X]-F[-FX]+X",
-      F = "FF",
-    ),
-  ),
-
-  Plant2 = LSys(
-    Title = "Plant 2",
-    Refs = [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-    ],
-    Angle = 22.5,
-    Rules = dict(
-      Start = "F",
-      F = "FF-[-F+F+F]+[+F-F-F]",
     ),
   ),
 
@@ -462,13 +451,13 @@ Curves = dict(
       "http://bl.ocks.org/nitaku/8949471",
       "http://mathworld.wolfram.com/HilbertCurve.html",
     ],
-    Angle = 90.0,
     Rules = dict(
+      Angle = 90.0,
       Start = "L",
       L = "LFRFL-F-RFLFR+F+LFRFL",
       R = "RFLFR+F+LFRFL-F-RFLFR",
+      ShowOrder = [1,2,3,4],
     ),
-    MaxOrder = 4,
   ),
 
   Gosper = LSys(
@@ -477,18 +466,107 @@ Curves = dict(
       "https://en.wikipedia.org/wiki/Gosper_curve"
       "http://larryriddle.agnesscott.org/ifs/ksnow/flowsnake.htm"
     ],
-    Angle = 60.0,
     Rules = dict(
+      Angle = 60.0,
       Start = "A",
       A = "A-B--B+A++AA+B-",
       B = "+A-BB--B-A++A+B",
+      ShowOrder = [1,2,3,4],
     ),
     PostRules = dict(
       A = "F",
       B = "F",
     ),
-    MaxOrder = 4,
   ),
+
+  QGosper = LSys(
+    Title = "Quadratic Gosper",
+    Refs = ["http://paulbourke.net/fractals/lsys/"
+    ],
+    Rules = dict(
+      Angle = 90.0,
+      Start = "YF",
+      X = "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
+      Y = "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY",
+      ShowOrder = [1,2,3,4],
+    ),
+  ),
+
+  SierpD = LSys(
+    Title = "Sierpinski Diamond",
+    Refs = ["http://paulbourke.net/fractals/lsys/",
+    ],
+    Rules = dict(
+      Angle = 90.0,
+      Start = "F+XF+F+XF",
+      X = "XF-F+F-XF+F+XF-F+F-X",
+      ShowOrder = [2,3,4,5],
+    ),
+  ),
+
+  SierpA = LSys(
+    Title = "Sierpinski Arrowhead",
+    Refs = ["http://paulbourke.net/fractals/lsys/",
+    ],
+    Rules = dict(
+      Angle = 60,
+      Start = "YF",
+      X = "YF+XF+Y",
+      Y = "XF-YF-X",
+      ShowOrder = [2,3,4,8],
+    ),
+  ),
+
+  Pent1 = LSys(
+    Title = "Pentaplexity",
+    Refs = ["http://paulbourke.net/fractals/lsys/",
+    ],
+    Rules = dict(
+      Angle = 36.0,
+      Start = "F++F++F++F++F",
+      F = "F++F++F|F-F++F",
+      ShowOrder = [1,2,3,4],
+    ),
+  ),
+
+  Dragon = LSys(
+    Title = "Dragon Curve",
+    Refs = ["http://paulbourke.net/fractals/lsys/",
+    ],
+    Rules = dict(
+      Angle = 90.0,
+      Start = "FX",
+      X = "X+YF+",
+      Y = "-FX-Y",
+      ShowOrder = [2,4,6,14],
+    ),
+  ),
+
+  Plant1 = LSys(
+    Title = "Plant 1",
+    Refs = [
+      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
+    ],
+    Rules = dict(
+      Angle = 22.5,
+      Start = "----X",
+      X = "F+[[X]-X]-F[-FX]+X",
+      F = "FF",
+    ),
+  ),
+
+  Plant2 = LSys(
+    Title = "Plant 2",
+    Refs = [
+      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
+    ],
+    Rules = dict(
+      Angle = 22.5,
+      Start = "----F",
+      F = "FF-[-F+F+F]+[+F-F-F]",
+    ),
+  ),
+
 )
 
 #------------------------------------------------------------------------------
@@ -524,7 +602,7 @@ def TestAll():
 
 def TestBox() :
   ostream = open("boxes.ps","w")
-  dsc = AdobeDSC(1,ostream)
+  dsc = AdobeDSC("TestBox",1,ostream)
   lsys = Curves["Hilbert"]
   psb = lsys.DrawBoxOutlines()
   pst = lsys.DrawTop()
@@ -546,7 +624,6 @@ def TestElab() :
 # Top level code
 
 
-
 def DoCurves(curves) :
   # input is a dictionary of lsys objects
   # get path
@@ -557,7 +634,8 @@ def DoCurves(curves) :
   else :
     opath = "lsys-examples"
   ostream = open(opath +".ps","w")
-  dsc = AdobeDSC(npages,ostream)
+  title = "Lindenmayer System Examples"
+  dsc = AdobeDSC(title,npages,ostream)
   # iterate over curves
   for lsys in curves.values():
     ps = lsys.DrawFancy()
@@ -568,6 +646,7 @@ def DoCurves(curves) :
 
 # single curve
 #DoCurves({'Hilbert':Curves['Hilbert']})
+#DoCurves({'Plant1':Curves['Plant1']})
 # all curves in list
 DoCurves(Curves)
 
