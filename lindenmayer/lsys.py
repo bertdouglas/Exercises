@@ -1,22 +1,45 @@
 #!/usr/bin/python3
 
-""" Goal of this exercise is to learn about:
+"""
+Goal of this exercise is to learn about:
+  - The object oriented approach to programming
+  - Lindenmayer systems.  Amazing variety from simple rules.
+  - Simple page layout with bounding boxes
+  - Using one program to generate code for another (postscript output)
 
-      - The object oriented approach to programming
-      - Lindenmayer systems.  Amazing variety from simple rules.
-      - Simple page layout with bounding boxes
-      - Using one program to generate code for another (postscript output)
+You also get to see some awesome visuals !
 
-    You also get to see some awesome curves !
-    https://en.wikipedia.org/wiki/L-system
+The major references for Lindenmayer Systems are:
+  https://en.wikipedia.org/wiki/L-system
+  https://en.wikipedia.org/wiki/The_Algorithmic_Beauty_of_Plants
 
-    Copyright: 2019 George Douglas
-    SPDX-License-Identifier: MIT
+Copyright: 2019 Bert Douglas
+SPDX-License-Identifier: MIT
 """
 
-# FIXME:  The "plants" are drawing outside of the box
+#------------------------------------------------------------------------------
+# Known bugs and missing features
 
-# FIXME:  Add some color to make look better
+"""
+FIXME:  Add some color to make look better
+
+FIXME:  Add pdfmark for clickable hyperlinks on refs.  It already just works
+on google pdf viewer, but not on evince.
+
+FIXME:  Bug in adobe DSC page numbers.
+        grep '%%Page' lsys-examples.ps
+          %%Pages: 11
+          %%Page: 1 11
+          %%Page: 1 12
+          %%Page: 1 13
+          %%Page: 1 14
+          %%Page: 1 15
+          %%Page: 1 16
+        Study how others do this.  I suspect the i-of-n format is not common.
+        I think you can wildcard the number of pages. Maybe like this:
+          %%Page: 1 ?
+        Memory is unsure.
+"""
 
 #------------------------------------------------------------------------------
 # tuneable parameters
@@ -230,12 +253,8 @@ class LSys :
         d -= angle
       elif "[" == action:
         stack.append((d,x,y))
-        #pp((d,x,y))
-        #pp(stack)
       elif "]" == action:
         (d,xp,yp) = stack.pop()
-        #pp(stack)
-        #pp((d,xp,yp))
         ps += [f"{xp-x} {yp-y} rmoveto\n"]
         x = xp;  y = yp;
       elif "|" == action:
@@ -257,7 +276,7 @@ class LSys :
   def DrawBasic(self, order, pbb) :
     """
       Produce postscript to draw LSys at specified order to fit in specified
-      bounding box.  Units of bbox are postscript points.
+      layout box on page.  Units of pbb are postscript points.
 
       Returns postscript as a list of strings
     """
@@ -349,7 +368,6 @@ class LSys :
     psr = self.DrawBasic(so[2],bb['r'])
     psm = self.DrawBasic(so[3],bb['m'])
     pst = self.DrawTop()
-    psb = []
     # draw outlines of layout boxes
     if False:
       psb = self.DrawBoxOutlines()
@@ -620,8 +638,19 @@ def TestElab() :
     print(i)
     pp(e)
 
+#TestBox()
+#TestElab()
+
+# single curve
+#DoCurves({'Hilbert':Curves['Hilbert']})
+#DoCurves({'Plant1':Curves['Plant1']})
+
+
 #------------------------------------------------------------------------------
-# Top level code
+# Print Curves
+
+# One page for each curve.
+# Curves passed as dictionary of LSys.
 
 
 def DoCurves(curves) :
@@ -643,14 +672,10 @@ def DoCurves(curves) :
   dsc.Finish()
   ostream.close()
 
+#------------------------------------------------------------------------------
+# Top level code
 
-# single curve
-#DoCurves({'Hilbert':Curves['Hilbert']})
-#DoCurves({'Plant1':Curves['Plant1']})
-# all curves in list
 DoCurves(Curves)
 
-#TestBox()
-#TestElab()
 
 
