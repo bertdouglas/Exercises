@@ -39,6 +39,7 @@ FIXME:  Bug in adobe DSC page numbers.
         I think you can wildcard the number of pages. Maybe like this:
           %%Page: 1 ?
         Memory is unsure.
+
 """
 
 #------------------------------------------------------------------------------
@@ -152,14 +153,19 @@ class AdobeDSC :
 
 class LSys :
   def __init__(self,**props) :
-    # Copy keyword args to named variables
-    # These are required
     self._Title = props['Title']
-    self._Rules = props['Rules']
-    # These are optional
+
+    # Set order of Rules for presentation
+    self._Rules = {}
+    rules = props['Rules']
+    self._Rules['Angle'] = rules.pop('Angle')
+    self._Rules['Order'] = rules.get('Order',[1,2,3,6])
+    if 'Order' in rules : del rules['Order']
+    self._Rules.update(rules)
+
     self._Refs = props.get('Refs',[])
     self._PostRules = props.get('PostRules',{})
-    self._Rules['ShowOrder'] = props['Rules'].get('ShowOrder',[1,2,3,6])
+
     # all possible actions
     self._actions = "Ff+-[]|"
     # all actions that perform drawing
@@ -235,7 +241,7 @@ class LSys :
     ps = []
     # direction and angle step
     d = 0.0
-    angle = -self._Rules['Angle'] * math.pi / 180.0
+    angle = self._Rules['Angle'] * math.pi / 180.0
     # current position and bounding box
     x = y = x0 = y0 = x1 = y1 = 0.0
     # do the actions
@@ -315,18 +321,19 @@ class LSys :
   def LayoutBoxes(self):
     """
     Return bounding boxes for layout regions
-    "top", "left", "center", "right", "main"
+    "top", 'a", "b", "left", "center", "right", "main"
     as shown below:
-    +------------3----------------------+
-    |                                   |
+    +----------------4------------------+
     |                top                |
-    |                                   |
-    |                                   |
-    +-------+-----2-----+---------------+
-    |       |           |               |
-    0 left  1  center   2   right       3
-    |       |           |               |
-    +-------+-----1-----+---------------+
+    +------------3---+------------------+
+    |                |                  |
+    |       a        2        b         |
+    |                |                  |
+    +----------+-2---+-----+------------+
+    |          |           |            |
+    0 left     1  center   3   right    4
+    |          |           |            |
+    +----------+-----1-----+------------+
     |                                   |
     |                                   |
     |                                   |
@@ -344,25 +351,27 @@ class LSys :
     +---------------0-------------------+
     """
     # all box edges as fraction of page size
-    #      0     1     2     3
-    xf = [0.05, 0.35, 0.65, 0.95]
-    yf = [0.03, 0.58, 0.80, 0.97]
+    #      0     1     2     3    4
+    xf = [0.05, 0.35, 0.23, 0.65, 0.95]
+    yf = [0.03, 0.58, 0.80, 0.86, 0.97]
     # scale to page size
     x = [s * PARMS['pagewidth']  for s in xf]
     y = [s * PARMS['pageheight'] for s in yf]
     # make named bounding boxes
     bb = dict(
-      m = (x[0],y[0],x[3],y[1]),
+      m = (x[0],y[0],x[4],y[1]),
       l = (x[0],y[1],x[1],y[2]),
-      c = (x[1],y[1],x[2],y[2]),
-      r = (x[2],y[1],x[3],y[2]),
-      t = (x[0],y[2],x[3],y[3]),
+      c = (x[1],y[1],x[3],y[2]),
+      r = (x[3],y[1],x[4],y[2]),
+      a = (x[0],y[2],x[2],y[3]),
+      b = (x[2],y[2],x[4],y[3]),
+      t = (x[0],y[3],x[4],y[4]),
     )
     return bb
 
   def DrawFancy(self):
     bb = self.LayoutBoxes()
-    so = self._Rules['ShowOrder']
+    so = self._Rules['Order']
     psl = self.DrawBasic(so[0],bb['l'])
     psc = self.DrawBasic(so[1],bb['c'])
     psr = self.DrawBasic(so[2],bb['r'])
@@ -395,21 +404,30 @@ class LSys :
     ps += [f"{y1-ts} moveto\n"]
     ps += [f"({t}) show\n"]
 
-    # Rules
+    # References
     atf = PARMS['attrfont']
     ats = PARMS['attrsize']
     ps += [f"{atf} findfont\n"]
     ps += [f"{ats} scalefont setfont\n"]
     ps += [f"{x0} {y1-ts-ats} moveto\n"]
-    for k,v in self._Rules.items():
-      ps += [f"0.0 {-ats} rmoveto\n"]
-      ps += [f"({k} : {v}) gsave show grestore\n"]
-
-    # References
-    ps += [f"0.0 {-ats} rmoveto\n"]
     for ref in self._Refs:
       ps += [f"0.0 {-ats} rmoveto\n"]
       ps += [f"({ref}) gsave show grestore\n"]
+
+    # Rules a
+    an = 2
+    (x0,y0,x1,y1) = bbs['a']
+    ps += [f"{x0} {y1} moveto\n"]
+    for k,v in list(self._Rules.items())[:an]:
+      ps += [f"0.0 {-ats} rmoveto\n"]
+      ps += [f"({k} : {v}) gsave show grestore\n"]
+
+    # Rules b
+    (x0,y0,x1,y1) = bbs['b']
+    ps += [f"{x0} {y1} moveto\n"]
+    for k,v in list(self._Rules.items())[an:]:
+      ps += [f"0.0 {-ats} rmoveto\n"]
+      ps += [f"({k} : {v}) gsave show grestore\n"]
 
     ps += ["grestore\n"]
     return ps
@@ -471,10 +489,10 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 90.0,
+      Order = [1,2,3,4],
       Start = "L",
       L = "LFRFL-F-RFLFR+F+LFRFL",
       R = "RFLFR+F+LFRFL-F-RFLFR",
-      ShowOrder = [1,2,3,4],
     ),
   ),
 
@@ -486,10 +504,10 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 60.0,
+      Order = [1,2,3,4],
       Start = "A",
       A = "A-B--B+A++AA+B-",
       B = "+A-BB--B-A++A+B",
-      ShowOrder = [1,2,3,4],
     ),
     PostRules = dict(
       A = "F",
@@ -497,41 +515,60 @@ Curves = dict(
     ),
   ),
 
-  QGosper = LSys(
-    Title = "Quadratic Gosper",
-    Refs = ["http://paulbourke.net/fractals/lsys/"
-    ],
-    Rules = dict(
-      Angle = 90.0,
-      Start = "YF",
-      X = "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
-      Y = "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY",
-      ShowOrder = [1,2,3,4],
-    ),
-  ),
+#  QGosper = LSys(
+#    Title = "Quadratic Gosper",
+#    Refs = [
+#      "http://paulbourke.net/fractals/lsys/"
+#    ],
+#    Rules = dict(
+#      Angle = 90.0,
+#      Order = [1,2,3,4],
+#      Start = "YF",
+#      X = "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
+#      Y = "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY",
+#    ),
+#  ),
 
   SierpD = LSys(
     Title = "Sierpinski Diamond",
-    Refs = ["http://paulbourke.net/fractals/lsys/",
+    Refs = [
+      "http://paulbourke.net/fractals/lsys/",
     ],
     Rules = dict(
       Angle = 90.0,
+      Order = [2,3,4,5],
       Start = "F+XF+F+XF",
       X = "XF-F+F-XF+F+XF-F+F-X",
-      ShowOrder = [2,3,4,5],
     ),
   ),
 
   SierpA = LSys(
     Title = "Sierpinski Arrowhead",
-    Refs = ["http://paulbourke.net/fractals/lsys/",
+    Refs = [
+      "http://paulbourke.net/fractals/lsys/",
     ],
     Rules = dict(
-      Angle = 60,
+      Angle = 60.0,
+      Order = [2,3,4,8],
       Start = "YF",
       X = "YF+XF+Y",
       Y = "XF-YF-X",
-      ShowOrder = [2,3,4,8],
+    ),
+  ),
+
+  SierpSS = LSys(
+    Title = "Sierpinski Square Snowflake",
+    Refs = [
+      "http://www.ethoberon.ethz.ch/WirthPubl/AD.pdf#page93",
+      "https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve",
+      "http://mathworld.wolfram.com/SierpinskiCurve.html",
+    ],
+    Rules = dict(
+      Angle = 45.0,
+      Order = [1,2,3,4],
+      Start = "+BABA",
+      A = "F--F--",
+      B = "BF+FF+B F--F-- BF+FF+B",
     ),
   ),
 
@@ -541,9 +578,9 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 36.0,
+      Order = [1,2,3,4],
       Start = "F++F++F++F++F",
       F = "F++F++F|F-F++F",
-      ShowOrder = [1,2,3,4],
     ),
   ),
 
@@ -553,10 +590,10 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 90.0,
-      Start = "FX",
+      Order = [2,4,6,14],
+      Start = "+FX",
       X = "X+YF+",
       Y = "-FX-Y",
-      ShowOrder = [2,4,6,14],
     ),
   ),
 
@@ -567,7 +604,7 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 22.5,
-      Start = "----X",
+      Start = "++++X",
       X = "F+[[X]-X]-F[-FX]+X",
       F = "FF",
     ),
@@ -580,7 +617,7 @@ Curves = dict(
     ],
     Rules = dict(
       Angle = 22.5,
-      Start = "----F",
+      Start = "++++F",
       F = "FF-[-F+F+F]+[+F-F-F]",
     ),
   ),
