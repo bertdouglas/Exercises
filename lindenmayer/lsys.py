@@ -40,6 +40,13 @@ FIXME:  Bug in adobe DSC page numbers.
           %%Page: 1 ?
         Memory is unsure.
 
+FIXME:  There is problem with formatting of long rules, such as in quadratic
+gosper.  Text does not fit.  Improve.  Perhaps line wrapping.  Perhaps smaller
+font.  Or maybe this curve is not needed.
+
+FIXME:  Code in DrawTop could use some re-factoring.  A lot of repetition. Too
+wet.
+
 """
 
 #------------------------------------------------------------------------------
