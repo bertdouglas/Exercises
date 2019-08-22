@@ -23,9 +23,6 @@ SPDX-License-Identifier: MIT
 """
 FIXME:  Add some color to make look better
 
-FIXME:  Add pdfmark for clickable hyperlinks on refs.  It already just works
-on google pdf viewer, but not on evince.
-
 FIXME:  Bug in adobe DSC page numbers.
         grep '%%Page' lsys-examples.ps
           %%Pages: 11
@@ -391,6 +388,19 @@ class LSys :
       psb = []
     return psl+psc+psr+psm+pst+psb
 
+  def pdfmark(self,bb,link):
+    ps = [
+      f"""
+      [ /Rect [{bb[0]} {bb[1]-2} {bb[0]} ({link}) stringwidth pop add {bb[3]-2}]
+      /Action << /Subtype /URI /URI ({link}) >>
+      /Border [0 0 1]
+      /Color [0 0 1]
+      /Subtype /Link
+      /ANN pdfmark
+      """
+    ]
+    return ps
+
   def DrawTop(self):
     """
       Draw all annotations in any box
@@ -416,10 +426,13 @@ class LSys :
     ats = PARMS['attrsize']
     ps += [f"{atf} findfont\n"]
     ps += [f"{ats} scalefont setfont\n"]
-    ps += [f"{x0} {y1-ts-ats} moveto\n"]
+    x = x0
+    y = y1-ts-ats
     for ref in self._Refs:
-      ps += [f"0.0 {-ats} rmoveto\n"]
-      ps += [f"({ref}) gsave show grestore\n"]
+      y -= ats
+      ps += [f"{x} {y} moveto\n"]
+      ps += [f"({ref}) show\n"]
+      ps += self.pdfmark([x,y,0,y+ats],ref)
 
     # Rules a
     an = 2
