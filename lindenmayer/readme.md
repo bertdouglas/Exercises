@@ -7,8 +7,8 @@ Goal of this exercise is to learn about:
 You also get to see some awesome visuals !
 
 The major references for Lindenmayer Systems are:
-  https://en.wikipedia.org/wiki/L-system
-  https://en.wikipedia.org/wiki/The_Algorithmic_Beauty_of_Plants
+  - https://en.wikipedia.org/wiki/L-system
+  - https://en.wikipedia.org/wiki/The_Algorithmic_Beauty_of_Plants
 
 Copyright: 2019 Bert Douglas
 SPDX-License-Identifier: MIT

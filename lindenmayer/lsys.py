@@ -23,20 +23,6 @@ SPDX-License-Identifier: MIT
 """
 FIXME:  Add some color to make look better
 
-FIXME:  Bug in adobe DSC page numbers.
-        grep '%%Page' lsys-examples.ps
-          %%Pages: 11
-          %%Page: 1 11
-          %%Page: 1 12
-          %%Page: 1 13
-          %%Page: 1 14
-          %%Page: 1 15
-          %%Page: 1 16
-        Study how others do this.  I suspect the i-of-n format is not common.
-        I think you can wildcard the number of pages. Maybe like this:
-          %%Page: 1 ?
-        Memory is unsure.
-
 FIXME:  There is problem with formatting of long rules, such as in quadratic
 gosper.  Text does not fit.  Improve.  Perhaps line wrapping.  Perhaps smaller
 font.  Or maybe this curve is not needed.
@@ -122,7 +108,7 @@ class AdobeDSC :
     sout = "".join(out)
     self._ostream.write(sout)
     self._out = []
-    self._npages += 1
+    self._page += 1
 
   def Finish(self) :
     """
@@ -390,14 +376,26 @@ class LSys :
 
   def pdfmark(self,bb,link):
     ps = [
-      f"""
-      [ /Rect [{bb[0]} {bb[1]-2} {bb[0]} ({link}) stringwidth pop add {bb[3]-2}]
-      /Action << /Subtype /URI /URI ({link}) >>
-      /Border [0 0 1]
-      /Color [0 0 1]
-      /Subtype /Link
-      /ANN pdfmark
-      """
+      f"\n%pdfmark"
+      f"\n["
+      f"\n  /Rect ["
+      f"\n    {bb[0]}"
+      f"\n    {bb[1]-2}"
+      f"\n    {bb[0]}"
+      f"\n      ({link})"
+      f"\n      stringwidth pop add"
+      f"\n    {bb[3]-2}"
+      f"\n  ]"
+      f"\n  /Action <<"
+      f"\n    /Subtype /URI"
+      f"\n    /URI ({link})"
+      f"\n  >>"
+      f"\n  /Border [0 0 1]"
+      f"\n  /Color [0 0 1]"
+      f"\n  /Subtype /Link"
+      f"\n  /ANN"
+      f"\npdfmark"
+      f"\n\n"
     ]
     return ps
 
@@ -479,7 +477,7 @@ Curves = dict(
   Hilbert = LSys(
     Title = "Hilbert Curve",
     Refs = [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
     ],
     Rules = dict(
       Angle = 90.0,
@@ -492,7 +490,7 @@ Curves = dict(
   Koch = LSys(
     Title = "Koch's Snowflake",
     Refs = [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
     ],
     Rules = dict(
       Angle = 60.0,
@@ -519,8 +517,8 @@ Curves = dict(
   Gosper = LSys(
     Title = "Peano-Gosper Curve aka 'Flowsnake'",
     Refs = [
-      "https://en.wikipedia.org/wiki/Gosper_curve"
-      "http://larryriddle.agnesscott.org/ifs/ksnow/flowsnake.htm"
+      "https://en.wikipedia.org/wiki/Gosper_curve",
+      "http://larryriddle.agnesscott.org/ifs/ksnow/flowsnake.htm",
     ],
     Rules = dict(
       Angle = 60.0,
