@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::fs;
 use indoc::indoc;
+use serde::{Deserialize, Serialize};
+use serde_json::Result;
+
 
 /*----------------------------------------------------------------------
 Lindenmayer System interpreter and display using SVG.
@@ -72,8 +75,8 @@ The orientation of y-axis for SVG is inverted
     |                                   |
     +---------------4-------------------+
 */
-type LayoutBoxes = HashMap<&'static str,(f64,f64,f64,f64)>;
-fn make_layout_boxes() -> LayoutBoxes {
+type LayoutBoxes<'a> = HashMap<&'a str,(f64,f64,f64,f64)>;
+fn make_layout_boxes() -> LayoutBoxes<'static> {
 
     // all box edges as fraction of page size
     //             0     1     2     3     4
@@ -165,7 +168,7 @@ if it is a rule, do substitution, append to new string.
 Exchange old and new after each iteration.
 */
 
-type Rules = HashMap<char,&'static str>;
+type Rules<'a> = HashMap<char,&'a str>;
 fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
     let mut new = String::from(start);
     for _ in 0..order {
@@ -198,10 +201,65 @@ fn test_apply_rules() {
 }
 
 /*----------------------------------------------------------------------
+ Work with top level curves
+*/
+
+#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize)]
+struct Curve<'a> {
+    title: String,
+    refs:  Vec<String>,
+    start: String,
+    angle: f64,
+    order: Option<Vec<i32>>,
+    #[serde(borrow)]
+    rules: Rules<'a>,
+    #[serde(borrow)]
+    post_rules: Option<Rules<'a>>,
+}
+
+fn test_serde() {
+
+    let mut c = Curve::default();
+    c.title = String::from("Hilbert Curve");
+    c.refs.push(String::from(
+        "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+    ));
+    c.start = String::from("X");
+    c.angle = 90.0;
+    c.rules = HashMap::from([
+        ('X', "-YF+XFX+FY-"),
+        ('Y', "+XF-YFY-FX+"),
+    ]);
+
+  let j = serde_json::to_string_pretty(&c).unwrap();
+  println!("{}",j);
+
+  let j1 = String::from(r#"
+{
+  "title": "Hilbert Curve",
+  "refs": [
+    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+  ],
+  "start": "X",
+  "angle": 90.0,
+  "rules": {
+    "X": "-YF+XFX+FY-",
+    "Y": "+XF-YFY-FX+"
+  }
+}
+"#);
+
+    let c1:Curve = serde_json::from_str(&j1).unwrap();
+    println!("{:#?}",&c1);
+}
+
+/*----------------------------------------------------------------------
 Top level
 */
 
 fn main() {
-    test_layout_boxes();
-    test_apply_rules();
+    if false { test_layout_boxes(); }
+    if false { test_apply_rules();  }
+    test_serde();
 }

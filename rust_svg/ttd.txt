@@ -1,0 +1,40 @@
+
+verify how Option(Vec) works with serde json
+  think it gives empty vec on read if not present
+
+move tests to separate file
+
+consider making curves init be a separate file to be read in to get
+example curves
+
+how to handle pageset for output
+  similar to python, with class and few methods
+
+edit top comments for python version
+  ready for showing
+
+create second backup git remote on gitsrv1
+
+
+done ---------------------------------------
+
+explore rust how it handles array initializers
+  can't believe it can't size an array from number of initializers
+  even c can do that
+  must be missing something
+  what happens if more or less initializers than data?
+answer
+  compiler warns if number of initializers is not matching declared size
+  discovered no way to let it default
+  annoying, but not dangerous
+
+improve formating of svg output
+  it is awkward because format string has to be a literal
+  left margin either messes up code indenting, or output with extra spaces
+  seems to show immaturity of rust
+answer
+  found macro indoc! and put inn use
+  works ok, minor added clutter, a win
+
+
+
