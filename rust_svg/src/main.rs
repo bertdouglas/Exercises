@@ -1,24 +1,21 @@
 use std::collections::HashMap;
 use std::fs;
+use indoc::indoc;
 
 /*----------------------------------------------------------------------
-This is rewrite of the python version into rust.
-Output is generated in SVG (structured vector graphics), but
-remains page oriented.
-*/
+Lindenmayer System interpreter and display using SVG.
 
+This is a rewrite of previous version from python/postscript.
+*/
 
 /*----------------------------------------------------------------------
 Tune-able parameters
-
-You can't make a static hashmap in rust.
-So go back to plist style.
 */
 
-static PARMS : [(&str, &str) ; 3 ] = [
-  ("linewidth",   "0.02"),        // inches
-  ("pagewidth",   "8.5"),         // inches
-  ("pageheight", "11.0"),         // inches
+static PARMS : [(&str, &str); 3 ] = [
+  ("linewidth",   "0.02"      ),   // inches
+  ("pagewidth",   "8.5"       ),   // inches
+  ("pageheight", "11.0"       ),   // inches
   //titlefont = "/Times-Bold",
   //titlesize = 30,
   //attrfont = "/Arial",
@@ -105,15 +102,15 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
     let mut svg = String::new();
 
     // prelude
-    let s1 = format!(r#"
-<!-- draw_layout_boxes -->
-<svg
-    xmlns="http://www.w3.org/2000/svg"
-    version="1.2"
-    width="{pagewidth}in"
-    height="{pageheight}in"
->
-"#,
+    let s1 = format!( indoc! {r#"
+        <!-- draw_layout_boxes -->
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            version="1.2"
+            width="{pagewidth}in"
+            height="{pageheight}in"
+        >
+        "#},
         pagewidth   = pget("pagewidth"),
         pageheight  = pget("pageheight"),
     );
@@ -121,21 +118,21 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
 
     // foreach box
     for (_k,v) in boxes {
-        let s2 = format!(r#"
-<rect
-    x      = "{x0:.4}in"
-    y      = "{y0:.4}in"
-    rx     = "0.1in"
-    ry     = "0.1in"
-    width  = "{w:.4}in"
-    height = "{h:.4}in"
-    style = "
-        fill           :  none;
-        stroke         :  black;
-        stroke-width   :  {strokewidth:.4}in;
-    "
-/>
-"#,
+        let s2 = format!( indoc! {r#"
+            <rect
+                x      = "{x0:.4}in"
+                y      = "{y0:.4}in"
+                rx     = "0.1in"
+                ry     = "0.1in"
+                width  = "{w:.4}in"
+                height = "{h:.4}in"
+                style  = "
+                    fill           :  none;
+                    stroke         :  black;
+                    stroke-width   :  {strokewidth:.4}in;
+                "
+            />
+            "#},
             x0=v.0,y0=v.1,w=v.2-v.0,h=v.3-v.1,
             strokewidth = pget("linewidth"),
         );
@@ -143,9 +140,9 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
     }
 
     // postlude
-    let s3 = format!(r#"
-</svg>
-"#
+    let s3 = format!( indoc! {r#"
+        </svg>
+        "#}
     );
     svg.push_str(&s3);
 
@@ -160,9 +157,51 @@ fn test_layout_boxes() {
 }
 
 /*----------------------------------------------------------------------
+Elaborate Lindenmayer System
+
+Apply rules iteratively until specified order is reached.
+Use two strings, old and new, remove character from old string,
+if it is a rule, do substitution, append to new string.
+Exchange old and new after each iteration.
+*/
+
+type Rules = HashMap<char,&'static str>;
+fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
+    let mut new = String::from(start);
+    for _ in 0..order {
+        let mut old = new;
+        new = "".to_string();
+        while old != "" {
+            let c = old.remove(0);
+            match rules.get(&c) {
+                Some(s) => new.push_str(s),
+                None    => new.push(c),
+            }
+        }
+    }
+    new
+}
+
+fn test_apply_rules() {
+    let rules:Rules = HashMap::from([
+        ('A',"AB"),
+        ('B',"A")
+    ]);
+    let start:&str = "A";
+
+    assert!(apply_rules(&rules,start,0) == "A");
+    assert!(apply_rules(&rules,start,1) == "AB");
+    assert!(apply_rules(&rules,start,2) == "ABA");
+    assert!(apply_rules(&rules,start,3) == "ABAAB");
+    assert!(apply_rules(&rules,start,4) == "ABAABABA");
+    println!("tested apply_rules");
+}
+
+/*----------------------------------------------------------------------
 Top level
 */
 
 fn main() {
     test_layout_boxes();
+    test_apply_rules();
 }
