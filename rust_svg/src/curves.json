@@ -8,10 +8,12 @@
   ],
   "angle" : 90.0,
   "start" : "X",
+  "order" : [],
   "rules" : {
     "X" : "-YF+XFX+FY-",
     "Y" : "+XF-YFY-FX+"
-  }
+  },
+  "post_rules" : {}
 }
 
 {
@@ -21,9 +23,11 @@
   ],
   "angle" : 60.0,
   "start" : "+F--F--F",
+  "order" : [],
   "rules" : {
     "F" : "F+F--F+F"
-  }
+  },
+  "post_rules" : {}
 }
 
 {
@@ -34,10 +38,12 @@
   ],
   "angle" : 90.0,
   "start" : "L",
+  "order" : [],
   "rules" : {
     "L" : "LFRFL-F-RFLFR+F+LFRFL",
     "R" : "RFLFR+F+LFRFL-F-RFLFR"
-  }
+  },
+  "post_rules" : {}
 }
 
 {
@@ -48,6 +54,7 @@
   ],
   "angle" : 60.0,
   "start" : "A",
+  "order" : [],
   "rules" : {
     "A" : "A-B--B+A++AA+B-",
     "B" : "+A-BB--B-A++A+B"
@@ -72,96 +79,107 @@
 #    ),
 #  ),
 
-  SierpD : LSys(
-    "title" : "Sierpinski Diamond",
-    "refs" : [
-      "http://paulbourke.net/fractals/lsys/",
-    ],
-    "rules" : dict(
-      "angle" : 90.0,
-      "order" : [2,3,4,5],
-      "start" : "F+XF+F+XF",
-      X : "XF-F+F-XF+F+XF-F+F-X",
-    ),
-  ),
+{
+  "title" : "Sierpinski Diamond",
+  "refs" : [
+    "http://paulbourke.net/fractals/lsys/"
+  ],
+  "angle" : 90.0,
+  "order" : [2,3,4,5],
+  "start" : "F+XF+F+XF",
+  "rules" : {
+    "X" : "XF-F+F-XF+F+XF-F+F-X"
+  },
+  "post_rules" : {}
+}
 
-  SierpA : LSys(
-    "title" : "Sierpinski Arrowhead",
-    "refs" : [
-      "http://paulbourke.net/fractals/lsys/",
-    ],
-    "rules" : dict(
-      "angle" : 60.0,
-      "order" : [2,3,4,8],
-      "start" : "YF",
-      X : "YF+XF+Y",
-      Y : "XF-YF-X",
-    ),
-  ),
+{
+  "title" : "Sierpinski Arrowhead",
+  "refs" : [
+    "http://paulbourke.net/fractals/lsys/"
+  ],
+  "angle" : 60.0,
+  "order" : [2,3,4,8],
+  "start" : "YF",
+  "rules" : {
+    "X" : "YF+XF+Y",
+    "Y" : "XF-YF-X"
+  },
+  "post_rules" : {}
+}
 
-  SierpSS : LSys(
-    "title" : "Sierpinski Square Snowflake",
-    "refs" : [
-      "http://www.ethoberon.ethz.ch/WirthPubl/AD.pdf#page93",
-      "https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve",
-      "http://mathworld.wolfram.com/SierpinskiCurve.html",
-    ],
-    "rules" : dict(
-      "angle" : 45.0,
-      "order" : [1,2,3,4],
-      "start" : "+BABA",
-      A : "F--F--",
-      B : "BF+FF+B F--F-- BF+FF+B",
-    ),
-  ),
+{
+  "title" : "Sierpinski Square Snowflake",
+  "refs" : [
+    "http://www.ethoberon.ethz.ch/WirthPubl/AD.pdf#page93",
+    "https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve",
+    "http://mathworld.wolfram.com/SierpinskiCurve.html"
+  ],
+  "angle" : 45.0,
+  "start" : "+BABA",
+  "order" : [],
+  "rules" : {
+    "A" : "F--F--",
+    "B" : "BF+FF+B F--F-- BF+FF+B"
+  },
+  "post_rules" : {}
+}
 
-  Pent1 : LSys(
-    "title" : "Pentaplexity",
-    "refs" : ["http://paulbourke.net/fractals/lsys/",
-    ],
-    "rules" : dict(
-      "angle" : 36.0,
-      "order" : [1,2,3,4],
-      "start" : "F++F++F++F++F",
-      F : "F++F++F|F-F++F",
-    ),
-  ),
+{
+  "title" : "Pentaplexity",
+  "refs" : [
+    "http://paulbourke.net/fractals/lsys/"
+  ],
+  "angle" : 36.0,
+  "order" : [],
+  "start" : "F++F++F++F++F",
+  "rules" : {
+    "F" : "F++F++F|F-F++F"
+  },
+  "post_rules" : {}
+}
 
-  Dragon : LSys(
-    "title" : "Dragon Curve",
-    "refs" : ["http://paulbourke.net/fractals/lsys/",
-    ],
-    "rules" : dict(
-      "angle" : 90.0,
-      "order" : [2,4,6,14],
-      "start" : "+FX",
-      X : "X+YF+",
-      Y : "-FX-Y",
-    ),
-  ),
+{
+  "title" : "Dragon Curve",
+  "refs" : [
+    "http://paulbourke.net/fractals/lsys/"
+  ],
+  "angle" : 90.0,
+  "order" : [2,4,6,14],
+  "start" : "+FX",
+  "rules" : {
+    "X" : "X+YF+",
+    "Y" : "-FX-Y"
+  },
+  "post_rules" : {}
+}
 
-  Plant1 : LSys(
-    "title" : "Plant 1",
-    "refs" : [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
-    ],
-    "rules" : dict(
-      "angle" : 22.5,
-      "start" : "++++X",
-      X : "F+[[X]-X]-F[-FX]+X",
-      F : "FF",
-    ),
-  ),
+{
+  "title" : "Plant 1",
+  "refs" : [
+    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+  ],
+  "angle" : 22.5,
+  "order" : [],
+  "start" : "++++X",
+  "rules" : {
+    "X" : "F+[[X]-X]-F[-FX]+X",
+    "F" : "FF"
+  },
+  "post_rules" : {}
+}
 
-  Plant2 : LSys(
-    "title" : "Plant 2",
-    "refs" : [
-      "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
-    ],
-    "rules" : dict(
-      "angle" : 22.5,
-      "start" : "++++F",
-      F : "FF-[-F+F+F]+[+F-F-F]",
-    ),
-  ),
+{
+  "title" : "Plant 2",
+  "refs" : [
+    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+  ],
+  "angle" : 22.5,
+  "order" : [],
+  "start" : "++++F",
+  "rules" : {
+    "F" : "FF-[-F+F+F]+[+F-F-F]"
+  },
+  "post_rules" : {}
+}
 

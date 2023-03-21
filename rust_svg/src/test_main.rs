@@ -43,22 +43,22 @@ pub fn test_serde() {
 /*----------------------------------------------------------------------
 */
 
-use crate::apply_rules;
+use crate::apply_rules_basic;
 use crate::Rules;
 
-pub fn test_apply_rules() {
+pub fn test_apply_rules_basic() {
     let rules:Rules = HashMap::from([
         ('A',"AB"),
         ('B',"A")
     ]);
     let start:&str = "A";
 
-    assert!(apply_rules(&rules,start,0) == "A");
-    assert!(apply_rules(&rules,start,1) == "AB");
-    assert!(apply_rules(&rules,start,2) == "ABA");
-    assert!(apply_rules(&rules,start,3) == "ABAAB");
-    assert!(apply_rules(&rules,start,4) == "ABAABABA");
-    println!("tested apply_rules");
+    assert!(apply_rules_basic(&rules,start,0) == "A");
+    assert!(apply_rules_basic(&rules,start,1) == "AB");
+    assert!(apply_rules_basic(&rules,start,2) == "ABA");
+    assert!(apply_rules_basic(&rules,start,3) == "ABAAB");
+    assert!(apply_rules_basic(&rules,start,4) == "ABAABABA");
+    println!("tested apply_rules_basic");
 }
 
 /*----------------------------------------------------------------------

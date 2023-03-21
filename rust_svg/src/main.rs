@@ -8,6 +8,24 @@ use crate::test_main::*;
 /*----------------------------------------------------------------------
 Lindenmayer System interpreter and display using SVG.
 
+An LSys is a set of rules for string substitution. There is a starting
+string and a set of rule strings.  Each character in a string is either the
+name of another rule, or a special action character.
+
+The special action characters are:
+F Move forward by line length drawing a line
+f Move forward by line length without drawing a line
++ Turn left by turning angle
+- Turn right by turning angle
+| Reverse direction (ie: turn by 180 degrees)
+[ Push current drawing state onto stack
+] Pop current drawing state from the stack
+
+The drawing state consists of:
+- drawing direction
+- drawing position
+
+Structured Vector Graphics (SVG) is generated to draw the LSys.
 This is a rewrite of previous version from python/postscript.
 */
 
@@ -162,7 +180,7 @@ Exchange old and new after each iteration.
 
 pub type Rules<'a> = HashMap<char,&'a str>;
 
-fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
+fn apply_rules_basic(rules:&Rules, start:&str, order:i32) -> String {
     let mut new = String::from(start);
     for _ in 0..order {
         let mut old = new;
@@ -179,6 +197,38 @@ fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
 }
 
 /*----------------------------------------------------------------------
+Higher level rule application
+
+Apply both main rules and post rules.
+The post rule substitution is used to allow use of rules from
+sources that presume implicit drawing on rules other than F.
+After all rule application, do minimization.
+*/
+fn apply_rules(curve:&Curve,order:i32) -> String {
+    // do rule substition
+    let basic = apply_rules_basic(&curve.rules,&curve.start,order);
+    // do post rule substitution
+    let post = apply_rules_basic(&curve.post_rules,&basic,1);
+    minimize_rules(post)
+}
+
+/*----------------------------------------------------------------------
+remove non-action characters from LSys rules
+*/
+
+fn minimize_rules(rules:String) -> String {
+
+    let mut out = String::new();
+    let actions:&str = "Ff+-[]|";
+    for rule in rules.chars() {
+        if actions.contains(rule) {
+            out.push(rule);
+        }
+    }
+    out
+}
+
+/*----------------------------------------------------------------------
  Work with top level curves
 */
 
@@ -189,10 +239,10 @@ pub struct Curve<'a> {
     refs:  Vec<String>,
     start: String,
     angle: f64,
-    order: Option<Vec<i32>>,
+    order: Vec<i32>,
     #[serde(borrow)]
     rules: Rules<'a>,
-    post_rules: Option<Rules<'a>>,
+    post_rules: Rules<'a>,
 }
 
 // split json file into chunks corresponding to top level objects
@@ -230,7 +280,7 @@ fn get_json_chunks(json:&str) -> Vec<String> {
 }
 
 // load curves from json chunks
-fn load_curves(chunks:Vec<String>) -> Vec<Curve<'static>> {
+fn load_curves<'a>(chunks:&'a Vec<String>) -> Vec<Curve<'a>> {
 
     // iterate over chunks of lines with serde
     let mut curves:Vec<Curve> = vec!();
@@ -253,8 +303,9 @@ fn load_curves(chunks:Vec<String>) -> Vec<Curve<'static>> {
             }
             Ok(curve) => {
                 okcnt += 1;
-                println!("{:#?}",&curve);
-                //curves.push(curve.clone());
+                //println!("{:#?}",&curve);
+                //println!("{}",&curve.title);
+                curves.push(curve);
             }
         }
     }
@@ -270,11 +321,11 @@ Top level
 
 fn main() {
     if false { test_layout_boxes(); }
-    if false { test_apply_rules();  }
+    if false { test_apply_rules_basic();  }
     if false { test_serde();        }
 
     let json = include_str!("curves.json");
     let chunks:Vec<String> = get_json_chunks(json);
     //println!("{:#?}",chunks);
-    let curves = load_curves(chunks);
+    let curves = load_curves(&chunks);
 }
