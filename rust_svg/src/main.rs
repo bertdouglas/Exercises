@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use std::fs;
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
 
+pub mod test_main;
+use crate::test_main::*;
 
 /*----------------------------------------------------------------------
 Lindenmayer System interpreter and display using SVG.
@@ -46,7 +46,6 @@ as diagrammed below.
 Note that the page origin for SVG is at top left.  This is different
 from that used by postscript which is at the bottom left.
 The orientation of y-axis for SVG is inverted
-
 
     +-----------------0-----------------+
     |                top                |
@@ -152,13 +151,6 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
     svg
 }
 
-fn test_layout_boxes() {
-    let lb = make_layout_boxes();
-    let svg = draw_layout_boxes(&lb);
-    print!("bounding boxes{:#?}",&lb);
-    _ = fs::write("layout_boxes.svg", svg);
-}
-
 /*----------------------------------------------------------------------
 Elaborate Lindenmayer System
 
@@ -168,7 +160,8 @@ if it is a rule, do substitution, append to new string.
 Exchange old and new after each iteration.
 */
 
-type Rules<'a> = HashMap<char,&'a str>;
+pub type Rules<'a> = HashMap<char,&'a str>;
+
 fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
     let mut new = String::from(start);
     for _ in 0..order {
@@ -185,28 +178,13 @@ fn apply_rules(rules:&Rules, start:&str, order:i32) -> String {
     new
 }
 
-fn test_apply_rules() {
-    let rules:Rules = HashMap::from([
-        ('A',"AB"),
-        ('B',"A")
-    ]);
-    let start:&str = "A";
-
-    assert!(apply_rules(&rules,start,0) == "A");
-    assert!(apply_rules(&rules,start,1) == "AB");
-    assert!(apply_rules(&rules,start,2) == "ABA");
-    assert!(apply_rules(&rules,start,3) == "ABAAB");
-    assert!(apply_rules(&rules,start,4) == "ABAABABA");
-    println!("tested apply_rules");
-}
-
 /*----------------------------------------------------------------------
  Work with top level curves
 */
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
-struct Curve<'a> {
+pub struct Curve<'a> {
     title: String,
     refs:  Vec<String>,
     start: String,
@@ -214,44 +192,76 @@ struct Curve<'a> {
     order: Option<Vec<i32>>,
     #[serde(borrow)]
     rules: Rules<'a>,
-    #[serde(borrow)]
     post_rules: Option<Rules<'a>>,
 }
 
-fn test_serde() {
-
-    let mut c = Curve::default();
-    c.title = String::from("Hilbert Curve");
-    c.refs.push(String::from(
-        "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-    ));
-    c.start = String::from("X");
-    c.angle = 90.0;
-    c.rules = HashMap::from([
-        ('X', "-YF+XFX+FY-"),
-        ('Y', "+XF-YFY-FX+"),
-    ]);
-
-  let j = serde_json::to_string_pretty(&c).unwrap();
-  println!("{}",j);
-
-  let j1 = String::from(r#"
-{
-  "title": "Hilbert Curve",
-  "refs": [
-    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-  ],
-  "start": "X",
-  "angle": 90.0,
-  "rules": {
-    "X": "-YF+XFX+FY-",
-    "Y": "+XF-YFY-FX+"
-  }
+// split json file into chunks corresponding to top level objects
+// assumes that objects begin with line containing only "{"
+// and end with line containing only "}"
+fn get_json_chunks(json:&str) -> Vec<String> {
+    let mut chunks:Vec<String> = vec!();
+    let mut chunk = String::new();
+    let mut inchunk:bool = false;
+    for line in json.lines() {
+        let l = line.trim_end();
+        match (l, inchunk) {
+        ("{",_) =>  {
+                // begin chunk, or discard false chunk
+                inchunk = true;
+                chunk = "".to_string();
+                chunk = chunk + line + "\n";
+            }
+        ("}",true) =>  {
+                // end chunk
+                inchunk = false;
+                chunk = chunk + line + "\n";
+                chunks.push(chunk.clone());
+            }
+        (_,true) =>  {
+                // accumulate lines in chunk
+                chunk = chunk + line + "\n";
+            }
+        (_,_) =>  {
+                // ignore the rest
+            }
+        }
+    }
+    chunks
 }
-"#);
 
-    let c1:Curve = serde_json::from_str(&j1).unwrap();
-    println!("{:#?}",&c1);
+// load curves from json chunks
+fn load_curves(chunks:Vec<String>) -> Vec<Curve<'static>> {
+
+    // iterate over chunks of lines with serde
+    let mut curves:Vec<Curve> = vec!();
+    let mut chunk_no = 0;
+    let mut errcnt = 0;
+    let mut okcnt = 0;
+    for chunk in chunks {
+        chunk_no += 1;
+        let r = serde_json::from_str::<Curve>(&chunk);
+        match r {
+            Err(why) => {
+                errcnt += 1;
+                println!();
+                println!("Failed to read chunk {}",chunk_no);
+                println!("--------------------------------");
+                println!("{}",&chunk);
+                println!("--------------------------------");
+                println!("{:?}", why);
+                println!();
+            }
+            Ok(curve) => {
+                okcnt += 1;
+                println!("{:#?}",&curve);
+                //curves.push(curve.clone());
+            }
+        }
+    }
+    println!("Successfully loaded {} of {} curves",
+        okcnt,okcnt+errcnt);
+
+    curves
 }
 
 /*----------------------------------------------------------------------
@@ -261,5 +271,10 @@ Top level
 fn main() {
     if false { test_layout_boxes(); }
     if false { test_apply_rules();  }
-    test_serde();
+    if false { test_serde();        }
+
+    let json = include_str!("curves.json");
+    let chunks:Vec<String> = get_json_chunks(json);
+    //println!("{:#?}",chunks);
+    let curves = load_curves(chunks);
 }

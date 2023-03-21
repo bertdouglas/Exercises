@@ -1,6 +1,8 @@
 
 verify how Option(Vec) works with serde json
   think it gives empty vec on read if not present
+No it gives None when not present.
+
 
 move tests to separate file
 
