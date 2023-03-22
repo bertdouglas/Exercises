@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
+use std::f64;
 
 pub mod test_main;
 use crate::test_main::*;
@@ -92,7 +94,8 @@ The orientation of y-axis for SVG is inverted
     |                                   |
     +---------------4-------------------+
 */
-type LayoutBoxes<'a> = HashMap<&'a str,(f64,f64,f64,f64)>;
+type BBox = (f64,f64,f64,f64);
+type LayoutBoxes<'a> = HashMap<&'a str,BBox>;
 fn make_layout_boxes() -> LayoutBoxes<'static> {
 
     // all box edges as fraction of page size
@@ -167,6 +170,79 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
     svg.push_str(&s3);
 
     svg
+}
+
+/*----------------------------------------------------------------------
+DrawCore
+
+Produce svg to draw lsys string in abstract space, with only
+relative moves and with step size of 1. Starting position is assumed to
+be (0,0). This requires separate definition of actual starting
+position and scale.
+
+Returns svg as string and bounding box in steps.
+*/
+
+// collect drawing actions and then later produce svg
+enum DAct {
+    RmoveTo(f64,f64),
+    RlineTo(f64,f64)
+}
+
+fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
+    type DXY = (f64,f64,f64);
+    let mut stack:Vec<DXY> = vec!();
+    let mut dacts:Vec<DAct> = vec!();
+
+    // direction and angle step
+    let mut d:f64 = 0.0;
+    let angle:f64 = curve.angle * PI / 180.0;
+
+    // current position and bounding box
+    let (mut x, mut y, mut x0, mut y0, mut x1, mut y1 )
+      : (f64,   f64,   f64,    f64,    f64,    f64,   )
+      = (0.0,   0.0,   0.0,    0.0,    0.0,    0.0,   );
+    let (mut xt, mut yt) : (f64,f64);
+
+    // do the actions
+    for action in actions.chars() {
+        // forward
+        if 'F' == action {
+            xt = d.cos();       yt = d.sin();
+            x += xt;            y += yt;
+            dacts.push(DAct::RlineTo(xt,yt));
+        }
+        else if '+' == action {
+            d += angle;
+        }
+        else if '-' == action {
+            d -= angle;
+        }
+        else if '[' == action {
+            stack.push((d,x,y));
+        }
+        else if ']' == action {
+            (d,xt,yt) = stack.pop().unwrap();
+            dacts.push(DAct::RmoveTo(xt-x,yt-y));
+            x = xt;  y = yt;
+        }
+        else if '|' == action {
+            d += PI;
+        }
+        else {
+            panic!("Unimplemented action: '{action}'");
+        }
+        // maintain bounding box
+        x0 = f64::min(x0,x);     y0 = f64::min(y0,y);
+        x1 = f64::max(x1,x);     y1 = f64::max(y1,y);
+    }
+
+    // adjust bounding box so it can't have zero size
+    // treat as if it has 1 step, keep center at zero
+    if x0==x1 { x0 = -0.5;  x1 = 0.5; }
+    if y0==y1 { y0 = -0.5;  y1 = 0.5; }
+
+    (dacts,(x0,y0,x1,y1))
 }
 
 /*----------------------------------------------------------------------
