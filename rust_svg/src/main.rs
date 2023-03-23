@@ -204,6 +204,9 @@ fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
       = (0.0,   0.0,   0.0,    0.0,    0.0,    0.0,   );
     let (mut xt, mut yt) : (f64,f64);
 
+    // starting position
+    dacts.push(DAct::RmoveTo(0.0,0.0));
+
     // do the actions
     for action in actions.chars() {
         // forward
@@ -238,12 +241,67 @@ fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
     }
 
     // adjust bounding box so it can't have zero size
-    // treat as if it has 1 step, keep center at zero
-    if x0==x1 { x0 = -0.5;  x1 = 0.5; }
-    if y0==y1 { y0 = -0.5;  y1 = 0.5; }
+    if x0==x1 { x0 = -0.1;  x1 = 0.1; }
+    if y0==y1 { y0 = -0.1;  y1 = 0.1; }
 
     (dacts,(x0,y0,x1,y1))
 }
+/*----------------------------------------------------------------------
+Produce svg to draw LSys at specified order to fit in specified
+layout box on page.  Units are inches.
+svg output is a string.
+*/
+
+fn draw_basic(curve:&Curve, order:i32, pbb:BBox) -> String {
+    let mut svg = String::new();
+    let (px0,py0,px1,py1) = pbb;
+    let actions = apply_rules(curve,order);
+    let (dacts,abb) = draw_core(curve,&actions);
+    let (ax0,ay0,ax1,ay1) = abb;
+
+    // find scale factor
+    let dp = f64::sqrt((px1-px0)*(py1-py0));
+    let da = f64::sqrt((ax1-ax0)*(ay1-ay0));
+    let scale = dp/da;
+
+    // find starting position
+    let x0 = (px0+px1)/2.0 - scale*(ax0+ax1)/2.0;
+    let y0 = (py0+py1)/2.0 - scale*(ay0+ay1)/2.0;
+
+    let mut col = 0;
+    for dact in dacts {
+        col += 1;
+        match dact {
+            DAct::RmoveTo(x,y) => {
+                let xs = scale * (x-x0);
+                let ys = scale * (y-y0);
+                let svgt = format!("m {:.4}in {:.4}in ",x0,y0);
+                svg.push_str(&svgt);
+            }
+            DAct::RlineTo(x,y) => {
+                let xs = scale * (x-x0);
+                let ys = scale * (y-y0);
+                let svgt = format!("l {:.4}in {:.4}in ",x0,y0);
+                svg.push_str(&svgt);
+            }
+        }
+        if col >= 10 {
+            svg.push_str("\n");
+        }
+    }
+
+    svg
+}
+/*
+
+
+    # make svg
+    lw = PARMS['linewidth']
+    ps += [f"\n%DrawBasic({order},({px0},{py0},{px1},{py1}))\n"]
+    ps += [f"{x} {y} moveto\n"]
+    ps += [f"{lw/scale} setlinewidth\n"]
+    ps += [f"stroke\n"]
+*/
 
 /*----------------------------------------------------------------------
 Elaborate Lindenmayer System
