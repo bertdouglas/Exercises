@@ -121,12 +121,10 @@ fn make_layout_boxes() -> LayoutBoxes<'static> {
     ])
 }
 
-fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
-    let mut svg = String::new();
-
+fn svg_page_wrap(svgin:&str, comment:&str) -> String {
     // prelude
-    let s1 = format!( indoc! {r#"
-        <!-- draw_layout_boxes -->
+    let prelude = format!( indoc! {r#"
+        <!-- {comment} -->
         <svg
             xmlns="http://www.w3.org/2000/svg"
             version="1.2"
@@ -134,14 +132,30 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
             height="{pageheight}in"
         >
         "#},
+        comment = comment,
         pagewidth   = pget("pagewidth"),
         pageheight  = pget("pageheight"),
     );
-    svg.push_str(&s1);
+
+    // postlude
+    let postlude = format!( indoc! {r#"
+        </svg>
+        "#}
+    );
+
+    let mut out = String::new();
+    out.push_str(&prelude);
+    out.push_str(svgin);
+    out.push_str(&postlude);
+    out
+}
+
+fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
+    let mut svg = String::new();
 
     // foreach box
     for (_k,v) in boxes {
-        let s2 = format!( indoc! {r#"
+        let s = format!( indoc! {r#"
             <rect
                 x      = "{x0:.4}in"
                 y      = "{y0:.4}in"
@@ -159,17 +173,9 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
             x0=v.0,y0=v.1,w=v.2-v.0,h=v.3-v.1,
             strokewidth = pget("linewidth"),
         );
-        svg.push_str(&s2);
+        svg.push_str(&s);
     }
-
-    // postlude
-    let s3 = format!( indoc! {r#"
-        </svg>
-        "#}
-    );
-    svg.push_str(&s3);
-
-    svg
+    svg_page_wrap(&svg,"draw_layout_boxes")
 }
 
 /*----------------------------------------------------------------------
@@ -287,21 +293,17 @@ fn draw_basic(curve:&Curve, order:i32, pbb:BBox) -> String {
         }
         if col >= 10 {
             svg.push_str("\n");
+            col = 0;
         }
     }
+    if col > 0 {
+        svg.push_str("\n");
+    }
+
+    // add svg wrapper
 
     svg
 }
-/*
-
-
-    # make svg
-    lw = PARMS['linewidth']
-    ps += [f"\n%DrawBasic({order},({px0},{py0},{px1},{py1}))\n"]
-    ps += [f"{x} {y} moveto\n"]
-    ps += [f"{lw/scale} setlinewidth\n"]
-    ps += [f"stroke\n"]
-*/
 
 /*----------------------------------------------------------------------
 Elaborate Lindenmayer System
