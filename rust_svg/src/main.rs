@@ -1,8 +1,12 @@
 use std::collections::HashMap;
-use indoc::indoc;
-use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use std::f64;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Write;
+
+use serde::{Deserialize, Serialize};
+use indoc::indoc;
 
 pub mod test_main;
 use crate::test_main::*;
@@ -57,6 +61,168 @@ fn pget(key:&str) -> &str {
 }
 
 /*----------------------------------------------------------------------
+SVG output document state management
+
+This collects page fragments and inserts
+document and page wrappers.
+*/
+
+// document actions
+enum DocAct<'a> {
+    // start new document, specify path to output file and comment
+    DocOpenPathComment(&'a str, &'a str),
+    // Start a new page, and specify comment
+    PageStartComment(&'a str),
+    // Add a data fragment to the page (content of data is not checked)
+    PageAddFragment(&'a str),
+    // Close out page and write to file
+    PageEnd,
+    // Close out document and write to file
+    DocClose
+}
+
+struct DocState {
+    indoc   : bool,             // inside a document
+    inpage  : bool,             // inside a page
+    page_no : usize,            // number of current page
+    frag_no : usize,            // number of current fragment in page
+    buf     : Vec<u8>,          // svg output buffer
+    file    : Option<File>,     // file in which to write output
+}
+
+fn doc_new() -> DocState {
+    let ds = DocState {
+        indoc   : false,
+        inpage  : false,
+        page_no : 0,
+        frag_no : 0,
+        buf     : vec!(),
+        file    : None,
+    };
+    ds
+}
+
+fn doc(ds:& mut DocState, doc_act:DocAct) {
+    match doc_act {
+        DocAct::DocOpenPathComment(path,comment) => {
+            // must be completely blank
+            assert!(ds.indoc == false);
+            assert!(ds.inpage == false);
+            assert!(ds.page_no == 0);
+            assert!(ds.frag_no == 0);
+            assert!(ds.buf.len() == 0);
+            assert!(ds.file.is_none());
+            // open the file
+            ds.file = Some(
+                        OpenOptions::new()
+                            .write(true).create(true)
+                            .open(path).unwrap()
+                    );
+            // document header
+            let svg_doc_head = format!( indoc! {r#"
+                <!-- {path}
+                     {comment} -->
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    version="1.2"
+                    width="{pagewidth}in"
+                    height="{pageheight}in"
+                >
+                <pageSet>
+
+                "#},
+                path = path,
+                comment = comment,
+                pagewidth   = pget("pagewidth"),
+                pageheight  = pget("pageheight"),
+            );
+            ds.buf.append(&mut svg_doc_head.into_bytes());
+        }
+        DocAct::PageStartComment(comment) => {
+            // assert state
+            assert!(ds.indoc == true);
+            assert!(ds.inpage == false);
+            // emit page header
+            ds.page_no += 1;
+            ds.frag_no = 0;
+            let svg_page_head = format!( indoc! {r#"
+                <page>
+                <!-- begin page {page_no}
+                     {comment} -->
+                "#},
+                page_no = ds.page_no,
+                comment = comment,
+            );
+            ds.buf.append(&mut svg_page_head.into_bytes());
+            // new state
+            ds.inpage = true;
+        }
+        DocAct::PageAddFragment(frag) => {
+            // assert state
+            assert!(ds.inpage == true);
+            // fragment header
+            ds.frag_no += 1;
+            let svg_frag_head = format!( indoc! {r#"
+
+                <!-- page {page_no} fragment {frag_no} -->
+                "#},
+                page_no = ds.page_no,
+                frag_no = ds.frag_no,
+            );
+            ds.buf.append(& mut svg_frag_head.into_bytes());
+            // collect fragment
+            let mut frag:Vec<u8> = frag.as_bytes().to_vec();
+            ds.buf.append(&mut frag);
+        }
+        DocAct::PageEnd => {
+            // assert state
+            assert!(ds.indoc == true);
+            assert!(ds.inpage == false);
+            assert!(ds.frag_no > 0);
+            assert!(ds.file.is_some());
+            let mut file = ds.file.as_mut().unwrap();
+            // page footer
+            ds.inpage = false;
+            let svg_page_foot = format!( indoc! {r#"
+
+                </page>
+                <!-- end page {page_no} -->
+
+                "#},
+                page_no = ds.page_no,
+            );
+            ds.buf.append(&mut svg_page_foot.into_bytes());
+            // write page
+            file.write_all(&ds.buf).ok();
+        }
+        DocAct::DocClose => {
+            // assert state
+            assert!(ds.indoc == true);
+            assert!(ds.inpage == false);
+            assert!(ds.page_no > 0);
+            assert!(ds.buf.len() == 0);
+            assert!(ds.file.is_some());
+            let mut file = ds.file.as_mut().unwrap();
+            // doc footer
+            let svg_doc_foot = format!( indoc! {r#"
+                </pageSet>
+                </svg>
+                "#}
+            );
+            ds.buf.append(&mut svg_doc_foot.into_bytes());
+            // write and close file
+            file.write_all(&ds.buf).ok();
+            file.sync_all().ok();
+            std::mem::drop(file);
+            // set new state
+            ds.indoc = false;
+            ds.buf.clear();
+            ds.file = None;
+        }
+    }
+}
+
+/*----------------------------------------------------------------------
 Page layout bounding boxes
 
 For convenience of page layout, define bounding boxes for
@@ -96,7 +262,7 @@ The orientation of y-axis for SVG is inverted
 */
 type BBox = (f64,f64,f64,f64);
 type LayoutBoxes<'a> = HashMap<&'a str,BBox>;
-fn make_layout_boxes() -> LayoutBoxes<'static> {
+fn layout_boxes_make() -> LayoutBoxes<'static> {
 
     // all box edges as fraction of page size
     //             0     1     2     3     4
@@ -120,37 +286,7 @@ fn make_layout_boxes() -> LayoutBoxes<'static> {
         (  "top"    , (x[0],y[0],x[4],y[1]) ),
     ])
 }
-
-fn svg_page_wrap(svgin:&str, comment:&str) -> String {
-    // prelude
-    let prelude = format!( indoc! {r#"
-        <!-- {comment} -->
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            version="1.2"
-            width="{pagewidth}in"
-            height="{pageheight}in"
-        >
-        "#},
-        comment = comment,
-        pagewidth   = pget("pagewidth"),
-        pageheight  = pget("pageheight"),
-    );
-
-    // postlude
-    let postlude = format!( indoc! {r#"
-        </svg>
-        "#}
-    );
-
-    let mut out = String::new();
-    out.push_str(&prelude);
-    out.push_str(svgin);
-    out.push_str(&postlude);
-    out
-}
-
-fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
+fn layout_boxes_draw(boxes: &LayoutBoxes) -> String {
     let mut svg = String::new();
 
     // foreach box
@@ -175,34 +311,30 @@ fn draw_layout_boxes(boxes: &LayoutBoxes) -> String {
         );
         svg.push_str(&s);
     }
-    svg_page_wrap(&svg,"draw_layout_boxes")
+    svg
 }
 
+
 /*----------------------------------------------------------------------
-DrawCore
-
-Produce svg to draw lsys string in abstract space, with only
-relative moves and with step size of 1. Starting position is assumed to
-be (0,0). This requires separate definition of actual starting
-position and scale.
-
-Returns svg as string and bounding box in steps.
+Convert fully elaborated LSys rules into a list of drawing actions.
+The drawing actions are in an abstract space with initial position
+at (x,y)=(0,0) and all actions having relative motion of one unit
+wrt current position.
 */
 
-// collect drawing actions and then later produce svg
 enum DAct {
     RmoveTo(f64,f64),
     RlineTo(f64,f64)
 }
 
-fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
+fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
     type DXY = (f64,f64,f64);
     let mut stack:Vec<DXY> = vec!();
     let mut dacts:Vec<DAct> = vec!();
 
     // direction and angle step
     let mut d:f64 = 0.0;
-    let angle:f64 = curve.angle * PI / 180.0;
+    let angle:f64 = lsys.angle * PI / 180.0;
 
     // current position and bounding box
     let (mut x, mut y, mut x0, mut y0, mut x1, mut y1 )
@@ -214,32 +346,32 @@ fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
     dacts.push(DAct::RmoveTo(0.0,0.0));
 
     // do the actions
-    for action in actions.chars() {
+    for rule in rules.chars() {
         // forward
-        if 'F' == action {
+        if 'F' == rule {
             xt = d.cos();       yt = d.sin();
             x += xt;            y += yt;
             dacts.push(DAct::RlineTo(xt,yt));
         }
-        else if '+' == action {
+        else if '+' == rule {
             d += angle;
         }
-        else if '-' == action {
+        else if '-' == rule {
             d -= angle;
         }
-        else if '[' == action {
+        else if '[' == rule {
             stack.push((d,x,y));
         }
-        else if ']' == action {
+        else if ']' == rule {
             (d,xt,yt) = stack.pop().unwrap();
             dacts.push(DAct::RmoveTo(xt-x,yt-y));
             x = xt;  y = yt;
         }
-        else if '|' == action {
+        else if '|' == rule {
             d += PI;
         }
         else {
-            panic!("Unimplemented action: '{action}'");
+            panic!("Unimplemented action: '{rule}'");
         }
         // maintain bounding box
         x0 = f64::min(x0,x);     y0 = f64::min(y0,y);
@@ -252,17 +384,18 @@ fn draw_core(curve:&Curve, actions:&str) -> (Vec<DAct>,BBox) {
 
     (dacts,(x0,y0,x1,y1))
 }
+
 /*----------------------------------------------------------------------
 Produce svg to draw LSys at specified order to fit in specified
 layout box on page.  Units are inches.
 svg output is a string.
 */
 
-fn draw_basic(curve:&Curve, order:i32, pbb:BBox) -> String {
+fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:BBox) -> String {
     let mut svg = String::new();
     let (px0,py0,px1,py1) = pbb;
-    let actions = apply_rules(curve,order);
-    let (dacts,abb) = draw_core(curve,&actions);
+    let rules = lsys_apply_rules(lsys,order);
+    let (dacts,abb) = lsys_dacts_from_rules(lsys,&rules);
     let (ax0,ay0,ax1,ay1) = abb;
 
     // find scale factor
@@ -299,9 +432,6 @@ fn draw_basic(curve:&Curve, order:i32, pbb:BBox) -> String {
     if col > 0 {
         svg.push_str("\n");
     }
-
-    // add svg wrapper
-
     svg
 }
 
@@ -316,7 +446,7 @@ Exchange old and new after each iteration.
 
 pub type Rules<'a> = HashMap<char,&'a str>;
 
-fn apply_rules_basic(rules:&Rules, start:&str, order:i32) -> String {
+fn rules_apply_basic(rules:&Rules, start:&str, order:i32) -> String {
     let mut new = String::from(start);
     for _ in 0..order {
         let mut old = new;
@@ -340,19 +470,19 @@ The post rule substitution is used to allow use of rules from
 sources that presume implicit drawing on rules other than F.
 After all rule application, do minimization.
 */
-fn apply_rules(curve:&Curve,order:i32) -> String {
+fn lsys_apply_rules(lsys:&LSys,order:i32) -> String {
     // do rule substition
-    let basic = apply_rules_basic(&curve.rules,&curve.start,order);
+    let basic = rules_apply_basic(&lsys.rules,&lsys.start,order);
     // do post rule substitution
-    let post = apply_rules_basic(&curve.post_rules,&basic,1);
-    minimize_rules(post)
+    let post = rules_apply_basic(&lsys.post_rules,&basic,1);
+    rules_minimize(post)
 }
 
 /*----------------------------------------------------------------------
 remove non-action characters from LSys rules
 */
 
-fn minimize_rules(rules:String) -> String {
+fn rules_minimize(rules:String) -> String {
 
     let mut out = String::new();
     let actions:&str = "Ff+-[]|";
@@ -365,12 +495,12 @@ fn minimize_rules(rules:String) -> String {
 }
 
 /*----------------------------------------------------------------------
- Work with top level curves
+ Work with top level lsyss
 */
 
 #[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct Curve<'a> {
+pub struct LSys<'a> {
     title: String,
     refs:  Vec<String>,
     start: String,
@@ -384,7 +514,7 @@ pub struct Curve<'a> {
 // split json file into chunks corresponding to top level objects
 // assumes that objects begin with line containing only "{"
 // and end with line containing only "}"
-fn get_json_chunks(json:&str) -> Vec<String> {
+fn json_to_chunks(json:&str) -> Vec<String> {
     let mut chunks:Vec<String> = vec!();
     let mut chunk = String::new();
     let mut inchunk:bool = false;
@@ -415,17 +545,17 @@ fn get_json_chunks(json:&str) -> Vec<String> {
     chunks
 }
 
-// load curves from json chunks
-fn load_curves<'a>(chunks:&'a Vec<String>) -> Vec<Curve<'a>> {
+// load lsys from json chunks
+fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 
     // iterate over chunks of lines with serde
-    let mut curves:Vec<Curve> = vec!();
+    let mut out:Vec<LSys> = vec!();
     let mut chunk_no = 0;
     let mut errcnt = 0;
     let mut okcnt = 0;
     for chunk in chunks {
         chunk_no += 1;
-        let r = serde_json::from_str::<Curve>(&chunk);
+        let r = serde_json::from_str::<LSys>(&chunk);
         match r {
             Err(why) => {
                 errcnt += 1;
@@ -437,18 +567,18 @@ fn load_curves<'a>(chunks:&'a Vec<String>) -> Vec<Curve<'a>> {
                 println!("{:?}", why);
                 println!();
             }
-            Ok(curve) => {
+            Ok(lsys) => {
                 okcnt += 1;
-                //println!("{:#?}",&curve);
-                //println!("{}",&curve.title);
-                curves.push(curve);
+                //println!("{:#?}",&lsys);
+                //println!("{}",&lsys.title);
+                out.push(lsys);
             }
         }
     }
-    println!("Successfully loaded {} of {} curves",
+    println!("Successfully loaded {} of {} lsyss",
         okcnt,okcnt+errcnt);
 
-    curves
+    out
 }
 
 /*----------------------------------------------------------------------
@@ -457,11 +587,15 @@ Top level
 
 fn main() {
     if false { test_layout_boxes(); }
-    if false { test_apply_rules_basic();  }
+    if false { test_rules_apply_basic();  }
     if false { test_serde();        }
 
-    let json = include_str!("curves.json");
-    let chunks:Vec<String> = get_json_chunks(json);
+    // get lsys examples
+    let json = include_str!("lsys_examples.json");
+    let chunks = json_to_chunks(json);
     //println!("{:#?}",chunks);
-    let curves = load_curves(&chunks);
+    let lsys = lsys_from_json_chunks(&chunks);
+
+    let ds = doc_new();
+
 }

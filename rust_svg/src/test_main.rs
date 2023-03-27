@@ -1,12 +1,12 @@
 /*----------------------------------------------------------------------
 */
 
-use crate::Curve;
+use crate::LSys;
 use std::collections::HashMap;
 
 pub fn test_serde() {
 
-    let mut c = Curve::default();
+    let mut c = LSys::default();
     c.title = String::from("Hilbert Curve");
     c.refs.push(String::from(
         "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
@@ -36,40 +36,40 @@ pub fn test_serde() {
 }
 "#);
 
-    let c1:Curve = serde_json::from_str(&j1).unwrap();
+    let c1:LSys = serde_json::from_str(&j1).unwrap();
     println!("{:#?}",&c1);
 }
 
 /*----------------------------------------------------------------------
 */
 
-use crate::apply_rules_basic;
+use crate::rules_apply_basic;
 use crate::Rules;
 
-pub fn test_apply_rules_basic() {
+pub fn test_rules_apply_basic() {
     let rules:Rules = HashMap::from([
         ('A',"AB"),
         ('B',"A")
     ]);
     let start:&str = "A";
 
-    assert!(apply_rules_basic(&rules,start,0) == "A");
-    assert!(apply_rules_basic(&rules,start,1) == "AB");
-    assert!(apply_rules_basic(&rules,start,2) == "ABA");
-    assert!(apply_rules_basic(&rules,start,3) == "ABAAB");
-    assert!(apply_rules_basic(&rules,start,4) == "ABAABABA");
-    println!("tested apply_rules_basic");
+    assert!(rules_apply_basic(&rules,start,0) == "A");
+    assert!(rules_apply_basic(&rules,start,1) == "AB");
+    assert!(rules_apply_basic(&rules,start,2) == "ABA");
+    assert!(rules_apply_basic(&rules,start,3) == "ABAAB");
+    assert!(rules_apply_basic(&rules,start,4) == "ABAABABA");
+    println!("tested rules_apply_basic");
 }
 
 /*----------------------------------------------------------------------
 */
-use crate::draw_layout_boxes;
-use crate::make_layout_boxes;
+use crate::layout_boxes_draw;
+use crate::layout_boxes_make;
 use std::fs;
 
 pub fn test_layout_boxes() {
-    let lb = make_layout_boxes();
-    let svg = draw_layout_boxes(&lb);
+    let lb = layout_boxes_make();
+    let svg = layout_boxes_draw(&lb);
     print!("bounding boxes{:#?}",&lb);
     _ = fs::write("layout_boxes.svg", svg);
 }
