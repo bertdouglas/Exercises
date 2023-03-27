@@ -1,16 +1,11 @@
+solve problem with multipage svg
+  can't view it with firefox, chrome, inkscape
+    just get a blank display
 
-verify how Option(Vec) works with serde json
-  think it gives empty vec on read if not present
-No it gives None when not present.
+  maybe I need to use multiple numbered single page files
 
 
-move tests to separate file
 
-consider making curves init be a separate file to be read in to get
-example curves
-
-how to handle pageset for output
-  similar to python, with class and few methods
 
 edit top comments for python version
   ready for showing
@@ -19,6 +14,12 @@ create second backup git remote on gitsrv1
 
 
 done ---------------------------------------
+
+move tests to separate file
+
+verify how Option(Vec) works with serde json
+  think it gives empty vec on read if not present
+No it gives None when not present.
 
 explore rust how it handles array initializers
   can't believe it can't size an array from number of initializers

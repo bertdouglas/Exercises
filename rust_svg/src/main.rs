@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use indoc::indoc;
 
 pub mod test_main;
-use crate::test_main::*;
 
 /*----------------------------------------------------------------------
 Lindenmayer System interpreter and display using SVG.
@@ -137,6 +136,8 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
                 pageheight  = pget("pageheight"),
             );
             ds.buf.append(&mut svg_doc_head.into_bytes());
+            // new state
+            ds.indoc = true;
         }
         DocAct::PageStartComment(comment) => {
             // assert state
@@ -177,7 +178,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
         DocAct::PageEnd => {
             // assert state
             assert!(ds.indoc == true);
-            assert!(ds.inpage == false);
+            assert!(ds.inpage == true);
             assert!(ds.frag_no > 0);
             assert!(ds.file.is_some());
             let mut file = ds.file.as_mut().unwrap();
@@ -194,6 +195,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             ds.buf.append(&mut svg_page_foot.into_bytes());
             // write page
             file.write_all(&ds.buf).ok();
+            ds.buf.clear();
         }
         DocAct::DocClose => {
             // assert state
@@ -498,7 +500,7 @@ fn rules_minimize(rules:String) -> String {
  Work with top level lsyss
 */
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub struct LSys<'a> {
     title: String,
@@ -586,8 +588,6 @@ Top level
 */
 
 fn main() {
-    if false { test_layout_boxes(); }
-    if false { test_rules_apply_basic();  }
 
     // get lsys examples
     let json = include_str!("lsys_examples.json");
