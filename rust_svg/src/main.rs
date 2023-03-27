@@ -588,7 +588,6 @@ Top level
 fn main() {
     if false { test_layout_boxes(); }
     if false { test_rules_apply_basic();  }
-    if false { test_serde();        }
 
     // get lsys examples
     let json = include_str!("lsys_examples.json");

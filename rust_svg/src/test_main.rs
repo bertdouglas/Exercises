@@ -1,43 +1,73 @@
+
+#[cfg(test)]
+use super::*;
+
 /*----------------------------------------------------------------------
+Start with json
+convert to native rust object
+convert back to json
+compare to original json
+
+FIXME:
+    This is rather fragile regarding spacing. It would be better to do
+    one more conversion back to objects and compare objects. Instead of
+    json -> object -> json2 and check json==json2 there is json ->
+    object -> json -> object2 and check object==object2.
 */
 
-use crate::LSys;
-use std::collections::HashMap;
+#[test]
+fn test_serde() {
 
-pub fn test_serde() {
+    // two example lsys in json form
+    let json = indoc! {r#"
+        {
+          "title": "Hilbert Curve",
+          "refs": [
+            "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+          ],
+          "start": "X",
+          "angle": 90.0,
+          "order": [],
+          "rules": {
+            "X": "-YF+XFX+FY-",
+            "Y": "+XF-YFY-FX+"
+          },
+          "post_rules": {}
+        }
 
-    let mut c = LSys::default();
-    c.title = String::from("Hilbert Curve");
-    c.refs.push(String::from(
-        "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-    ));
-    c.start = String::from("X");
-    c.angle = 90.0;
-    c.rules = HashMap::from([
-        ('X', "-YF+XFX+FY-"),
-        ('Y', "+XF-YFY-FX+"),
-    ]);
+        {
+          "title": "Koch's Snowflake",
+          "refs": [
+            "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+          ],
+          "start": "+F--F--F",
+          "angle": 60.0,
+          "order": [],
+          "rules": {
+            "F": "F+F--F+F"
+          },
+          "post_rules": {}
+        }
 
-  let j = serde_json::to_string_pretty(&c).unwrap();
-  println!("{}",j);
+    "#};
 
-  let j1 = String::from(r#"
-{
-  "title": "Hilbert Curve",
-  "refs": [
-    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
-  ],
-  "start": "X",
-  "angle": 90.0,
-  "rules": {
-    "X": "-YF+XFX+FY-",
-    "Y": "+XF-YFY-FX+"
-  }
-}
-"#);
+    // covert json to vector of LSys structs
+    let chunks = json_to_chunks(json);
+    //println!("{:#?}",chunks);
+    let lsysv = lsys_from_json_chunks(&chunks);
 
-    let c1:LSys = serde_json::from_str(&j1).unwrap();
-    println!("{:#?}",&c1);
+    // convert back to json
+    let mut json2 = String::new();
+    for lsys in lsysv {
+        json2.push_str(&serde_json::to_string_pretty(&lsys).unwrap());
+        json2.push_str(&"\n\n");
+    }
+
+    //println!("{}",json);
+    //println!("{}",json2);
+
+    // compare
+    assert_eq!(json,json2);
 }
 
 /*----------------------------------------------------------------------
@@ -45,6 +75,7 @@ pub fn test_serde() {
 
 use crate::rules_apply_basic;
 use crate::Rules;
+use std::collections::HashMap;
 
 pub fn test_rules_apply_basic() {
     let rules:Rules = HashMap::from([
