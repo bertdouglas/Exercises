@@ -168,7 +168,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             ds.inpage = false;
             let svg_page_foot = format!( indoc! {r#"
 
-                </svg/
+                </svg>
                 <!-- end page {page_no} -->
 
                 "#},
