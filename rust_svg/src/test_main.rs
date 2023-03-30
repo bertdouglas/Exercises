@@ -108,7 +108,7 @@ fn test_layout_boxes() {
     let svg = layout_boxes_draw(&lb);
     //print!("bounding boxes{:#?}",&lb);
     let mut ds = doc_new();
-    doc(&mut ds, DocAct::DocOpenPathComment(
+    doc(&mut ds, DocAct::DocOpenPathTitle(
         &"layout_boxes.svg",
         &"test_layout_boxes",
     ));

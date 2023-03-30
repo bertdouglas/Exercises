@@ -11,30 +11,6 @@ use indoc::indoc;
 pub mod test_main;
 
 /*----------------------------------------------------------------------
-Lindenmayer System interpreter and display using SVG.
-
-An LSys is a set of rules for string substitution. There is a starting
-string and a set of rule strings.  Each character in a string is either the
-name of another rule, or a special action character.
-
-The special action characters are:
-F Move forward by line length drawing a line
-f Move forward by line length without drawing a line
-+ Turn left by turning angle
-- Turn right by turning angle
-| Reverse direction (ie: turn by 180 degrees)
-[ Push current drawing state onto stack
-] Pop current drawing state from the stack
-
-The drawing state consists of:
-- drawing direction
-- drawing position
-
-Structured Vector Graphics (SVG) is generated to draw the LSys.
-This is a rewrite of previous version from python/postscript.
-*/
-
-/*----------------------------------------------------------------------
 Tune-able parameters
 */
 
@@ -60,16 +36,15 @@ fn pget(key:&str) -> &str {
 }
 
 /*----------------------------------------------------------------------
-SVG output document state management
+HTML/SVG output document state management
 
-This collects page fragments and inserts
-document and page wrappers.
+This collects page fragments and inserts various headers and footers.
 */
 
 // document actions
 enum DocAct<'a> {
-    // start new document, specify path to output file and comment
-    DocOpenPathComment(&'a str, &'a str),
+    // start new document, specify path to output file and title
+    DocOpenPathTitle(&'a str, &'a str),
     // Start a new page, and specify comment
     PageStartComment(&'a str),
     // Add a data fragment to the page (content of data is not checked)
@@ -103,7 +78,7 @@ fn doc_new() -> DocState {
 
 fn doc(ds:& mut DocState, doc_act:DocAct) {
     match doc_act {
-        DocAct::DocOpenPathComment(path,comment) => {
+        DocAct::DocOpenPathTitle(path,title) => {
             // must be completely blank
             assert!(ds.indoc == false);
             assert!(ds.inpage == false);
@@ -112,30 +87,22 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             assert!(ds.buf.len() == 0);
             assert!(ds.file.is_none());
             // open the file
-            ds.file = Some(
-                        OpenOptions::new()
-                            .write(true).create(true)
-                            .open(path).unwrap()
-                    );
+            ds.file = Some(OpenOptions::new()
+                .write(true).create(true)
+                .open(path).unwrap()
+            );
             // document header
-            let svg_doc_head = format!( indoc! {r#"
-                <!-- {path}
-                     {comment} -->
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    version="1.2"
-                    width="{pagewidth}in"
-                    height="{pageheight}in"
-                >
-                <pageSet>
+            let html_doc_head = format!( indoc! {r#"
+                <!DOCTYPE html>
+                <html><head>
+                    <title>{title}</title>
+                </head><body>
+                <h1>{title}</h1>
 
                 "#},
-                path = path,
-                comment = comment,
-                pagewidth   = pget("pagewidth"),
-                pageheight  = pget("pageheight"),
+                title = title,
             );
-            ds.buf.append(&mut svg_doc_head.into_bytes());
+            ds.buf.append(&mut html_doc_head.into_bytes());
             // new state
             ds.indoc = true;
         }
@@ -143,16 +110,31 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             // assert state
             assert!(ds.indoc == true);
             assert!(ds.inpage == false);
+            // emit page separator
+            if ds.page_no > 0 {
+                let html_page_sep = format!( indoc! {r#"
+
+                <hr>
+
+                "#});
+                ds.buf.append(&mut html_page_sep.into_bytes());
+            }
             // emit page header
             ds.page_no += 1;
             ds.frag_no = 0;
             let svg_page_head = format!( indoc! {r#"
-                <page>
                 <!-- begin page {page_no}
                      {comment} -->
+                <svg
+                    width="{pagewidth}in"
+                    height="{pageheight}in"
+                >
+
                 "#},
                 page_no = ds.page_no,
                 comment = comment,
+                pagewidth   = pget("pagewidth"),
+                pageheight  = pget("pageheight"),
             );
             ds.buf.append(&mut svg_page_head.into_bytes());
             // new state
@@ -186,7 +168,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             ds.inpage = false;
             let svg_page_foot = format!( indoc! {r#"
 
-                </page>
+                </svg/
                 <!-- end page {page_no} -->
 
                 "#},
@@ -206,12 +188,11 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             assert!(ds.file.is_some());
             let mut file = ds.file.as_mut().unwrap();
             // doc footer
-            let svg_doc_foot = format!( indoc! {r#"
-                </pageSet>
-                </svg>
+            let html_doc_foot = format!( indoc! {r#"
+                </body></html>
                 "#}
             );
-            ds.buf.append(&mut svg_doc_foot.into_bytes());
+            ds.buf.append(&mut html_doc_foot.into_bytes());
             // write and close file
             file.write_all(&ds.buf).ok();
             file.sync_all().ok();
@@ -316,12 +297,111 @@ fn layout_boxes_draw(boxes: &LayoutBoxes) -> String {
     svg
 }
 
+/*----------------------------------------------------------------------
+Lindenmayer System interpreter and display using SVG.
+
+An LSys is a set of rules for string substitution. There is a starting
+string and a set of rule strings.  Each character in a string is either the
+name of another rule, or a special action character.
+
+The special action characters are:
+F Move forward by line length drawing a line
+f Move forward by line length without drawing a line
++ Turn left by turning angle
+- Turn right by turning angle
+| Reverse direction (ie: turn by 180 degrees)
+[ Push current drawing state onto stack
+] Pop current drawing state from the stack
+
+The drawing state consists of:
+- drawing direction
+- drawing position
+
+Structured Vector Graphics (SVG) is generated to draw the LSys.
+This is a rewrite of previous version from python/postscript.
+*/
+
+/*----------------------------------------------------------------------
+The Lindenmayer System
+*/
+
+pub type Rules<'a> = HashMap<char,&'a str>;
+
+#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub struct LSys<'a> {
+    title: String,          // name or description of the lsys
+    refs:  Vec<String>,     // list of places found on the web
+    start: String,          // initial rule
+    angle: f64,             // the angle step
+    order: Vec<i32>,        // list of orders to be displayed
+    #[serde(borrow)]
+    rules: Rules<'a>,       // other rules referenced from start rule
+    post_rules: Rules<'a>,  // final rules applied only once
+}
+
+/*----------------------------------------------------------------------
+Elaborate Lindenmayer System
+
+Apply rules iteratively until specified order is reached.
+Use two strings, old and new, remove character from old string,
+if it is a rule, do substitution, append to new string.
+Exchange old and new after each iteration.
+*/
+
+fn rules_apply_basic(rules:&Rules, start:&str, order:i32) -> String {
+    let mut new = String::from(start);
+    for _ in 0..order {
+        let mut old = new;
+        new = "".to_string();
+        while old != "" {
+            let c = old.remove(0);
+            match rules.get(&c) {
+                Some(s) => new.push_str(s),
+                None    => new.push(c),
+            }
+        }
+    }
+    new
+}
+
+/*----------------------------------------------------------------------
+remove non-action characters from LSys rules
+*/
+
+fn rules_minimize(rules:String) -> String {
+
+    let mut out = String::new();
+    let actions:&str = "Ff+-[]|";
+    for rule in rules.chars() {
+        if actions.contains(rule) {
+            out.push(rule);
+        }
+    }
+    out
+}
+
+/*----------------------------------------------------------------------
+Higher level rule application
+
+Apply both main rules and post rules.
+The post rule substitution is used to allow use of rules from
+sources that presume implicit drawing on rules other than F.
+After all rule application, do minimization.
+*/
+fn lsys_apply_rules(lsys:&LSys,order:i32) -> String {
+    // do rule substition
+    let basic = rules_apply_basic(&lsys.rules,&lsys.start,order);
+    // do post rule substitution
+    let post = rules_apply_basic(&lsys.post_rules,&basic,1);
+    rules_minimize(post)
+}
 
 /*----------------------------------------------------------------------
 Convert fully elaborated LSys rules into a list of drawing actions.
-The drawing actions are in an abstract space with initial position
-at (x,y)=(0,0) and all actions having relative motion of one unit
-wrt current position.
+The drawing actions operate in an abstract space with initial position
+at (x,y)=(0,0) and all actions having relative motion of one unit wrt
+current position.
 */
 
 enum DAct {
@@ -342,6 +422,7 @@ fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
     let (mut x, mut y, mut x0, mut y0, mut x1, mut y1 )
       : (f64,   f64,   f64,    f64,    f64,    f64,   )
       = (0.0,   0.0,   0.0,    0.0,    0.0,    0.0,   );
+    // temporary
     let (mut xt, mut yt) : (f64,f64);
 
     // starting position
@@ -381,8 +462,9 @@ fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
     }
 
     // adjust bounding box so it can't have zero size
-    if x0==x1 { x0 = -0.1;  x1 = 0.1; }
-    if y0==y1 { y0 = -0.1;  y1 = 0.1; }
+    // this allows scaling to work even for empty output
+    if f64::abs(x1-x0) < 0.1 { x0 = -0.1;  x1 = 0.1; }
+    if f64::abs(y1-y0) < 0.1 { y0 = -0.1;  y1 = 0.1; }
 
     (dacts,(x0,y0,x1,y1))
 }
@@ -437,85 +519,14 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:BBox) -> String {
     svg
 }
 
-/*----------------------------------------------------------------------
-Elaborate Lindenmayer System
+/*---------------------------------------------------------------------
+Json file handling
 
-Apply rules iteratively until specified order is reached.
-Use two strings, old and new, remove character from old string,
-if it is a rule, do substitution, append to new string.
-Exchange old and new after each iteration.
+Split json file into chunks corresponding to top level objects
+assumes that objects begin with line containing only "{"
+and end with line containing only "}"
 */
 
-pub type Rules<'a> = HashMap<char,&'a str>;
-
-fn rules_apply_basic(rules:&Rules, start:&str, order:i32) -> String {
-    let mut new = String::from(start);
-    for _ in 0..order {
-        let mut old = new;
-        new = "".to_string();
-        while old != "" {
-            let c = old.remove(0);
-            match rules.get(&c) {
-                Some(s) => new.push_str(s),
-                None    => new.push(c),
-            }
-        }
-    }
-    new
-}
-
-/*----------------------------------------------------------------------
-Higher level rule application
-
-Apply both main rules and post rules.
-The post rule substitution is used to allow use of rules from
-sources that presume implicit drawing on rules other than F.
-After all rule application, do minimization.
-*/
-fn lsys_apply_rules(lsys:&LSys,order:i32) -> String {
-    // do rule substition
-    let basic = rules_apply_basic(&lsys.rules,&lsys.start,order);
-    // do post rule substitution
-    let post = rules_apply_basic(&lsys.post_rules,&basic,1);
-    rules_minimize(post)
-}
-
-/*----------------------------------------------------------------------
-remove non-action characters from LSys rules
-*/
-
-fn rules_minimize(rules:String) -> String {
-
-    let mut out = String::new();
-    let actions:&str = "Ff+-[]|";
-    for rule in rules.chars() {
-        if actions.contains(rule) {
-            out.push(rule);
-        }
-    }
-    out
-}
-
-/*----------------------------------------------------------------------
- Work with top level lsyss
-*/
-
-#[derive(Debug, Default, Clone, PartialEq)]
-#[derive(Serialize, Deserialize)]
-pub struct LSys<'a> {
-    title: String,
-    refs:  Vec<String>,
-    start: String,
-    angle: f64,
-    order: Vec<i32>,
-    #[serde(borrow)]
-    rules: Rules<'a>,
-    post_rules: Rules<'a>,
-}
-
-// split json file into chunks corresponding to top level objects
-// assumes that objects begin with line containing only "{"
-// and end with line containing only "}"
 fn json_to_chunks(json:&str) -> Vec<String> {
     let mut chunks:Vec<String> = vec!();
     let mut chunk = String::new();
@@ -547,7 +558,7 @@ fn json_to_chunks(json:&str) -> Vec<String> {
     chunks
 }
 
-// load lsys from json chunks
+// load lsys from json chunks using serde library
 fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 
     // iterate over chunks of lines with serde
@@ -577,7 +588,7 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
             }
         }
     }
-    println!("Successfully loaded {} of {} lsyss",
+    println!("Successfully loaded {} of {} LSys",
         okcnt,okcnt+errcnt);
 
     out
@@ -593,8 +604,11 @@ fn main() {
     let json = include_str!("lsys_examples.json");
     let chunks = json_to_chunks(json);
     //println!("{:#?}",chunks);
-    let lsys = lsys_from_json_chunks(&chunks);
+    let lsysv = lsys_from_json_chunks(&chunks);
 
     let ds = doc_new();
+    for lsys in lsysv {
+    }
+
 
 }

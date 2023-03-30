@@ -1,10 +1,4 @@
-solve problem with multipage svg
-  can't view it with firefox, chrome, inkscape
-    just get a blank display
-
-  maybe I need to use multiple numbered single page files
-
-
+-------------------------------------
 
 
 edit top comments for python version
@@ -14,6 +8,41 @@ create second backup git remote on gitsrv1
 
 
 done ---------------------------------------
+----------------------------
+Played around some more.  Managed to get two copies of test layout boxes
+wrapped in html and displayed in chrome.  Looks like we have a path
+forware.
+
+Now just have to try various formats and layouts to see what is most
+appealing.  Also need to try some html to pdf converters and try to
+be compatible.
+
+--------------------------
+solve problem with multipage svg
+  can't view it with firefox, chrome, inkscape
+    just get a blank display
+
+  maybe I need to use multiple numbered single page files
+
+  https://lists.freedesktop.org/archives/poppler/2016-February/011685.html
+    > A long time ago, cairo implemented the SVG 1.2 draft with support for
+    > multipage, so pdftocairo complies with that and submits an entire PDF
+    > document to be rendered into 1 SVG file.  However, no existing svg
+    > viewer can open these files because SVG 1.2 was never adopted by W3C and
+    > was actually dropped in 2005 in favor of development of SVG 2.0.  See
+    > https://www.w3.org/standards/techs/svg#obsolete
+    >
+    > Inkscape has scapped their own plans of supporting multi-page SVG since
+    > it's not supported by any current SVG specification, and SVG 2.0 doesn't
+    > look like it will have multi-page either
+    > http://wiki.inkscape.org/wiki/index.php/Multipage
+
+So the 1.2 spec was never adopted.
+No viewer implements multi-page.
+Need to redesign much of code.
+Either go back to pdf, or go to multi-file?
+Is it possible to have html wrapper around svg?
+--------------------------------------
 
 move tests to separate file
 
