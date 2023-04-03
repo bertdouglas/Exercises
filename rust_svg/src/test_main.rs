@@ -103,6 +103,16 @@ fn test_rules_apply_basic() {
 */
 
 #[test]
+fn test_rules_minimize() {
+    assert_eq!(rules_minimize("ABCD"),            ""      );
+    assert_eq!(rules_minimize(ACTIONS),           ACTIONS );
+    assert_eq!(rules_minimize("AFBfC+D-E[G]H|I"), ACTIONS );
+}
+
+/*----------------------------------------------------------------------
+*/
+
+#[test]
 fn test_layout_boxes() {
     let lb = layout_boxes_make();
     let svg = layout_boxes_draw(&lb);

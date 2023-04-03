@@ -1,0 +1,14 @@
+----------------------------------------------------------------
+2023-04-02 Sunday
+It seems that the path element cannot accept units in inches.
+It is always in pixels.  And the coordinates must be integer values.
+No fractions allowed.
+
+I am still not sure I understand it correctly.
+There are icons in svg which seem to have subpixel detail.
+I also see that a "pixel" is defined to be 1/96 of an inch.
+Obviously some screens have more or less resolution.
+A 4k resolution 17 inch monitor will have about 300 pixels per inch.
+
+Fractional pixels are allowed.
+Inch units are not.

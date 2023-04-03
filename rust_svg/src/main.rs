@@ -11,31 +11,6 @@ use indoc::indoc;
 pub mod test_main;
 
 /*----------------------------------------------------------------------
-Tune-able parameters
-*/
-
-static PARMS : [(&str, &str); 3 ] = [
-  ("linewidth",   "0.02"      ),   // inches
-  ("pagewidth",   "8.5"       ),   // inches
-  ("pageheight", "11.0"       ),   // inches
-  //titlefont = "/Times-Bold",
-  //titlesize = 30,
-  //attrfont = "/Arial",
-  //attrsize = 12,
-];
-
-fn pget(key:&str) -> &str {
-    let mut val:&str = "";
-    for (k,v) in PARMS {
-        if k == key {
-            val = v;
-            break;
-        }
-    }
-    val
-}
-
-/*----------------------------------------------------------------------
 HTML/SVG output document state management
 
 This collects page fragments and inserts various headers and footers.
@@ -163,7 +138,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             assert!(ds.inpage == true);
             assert!(ds.frag_no > 0);
             assert!(ds.file.is_some());
-            let mut file = ds.file.as_mut().unwrap();
+            let file = ds.file.as_mut().unwrap();
             // page footer
             ds.inpage = false;
             let svg_page_foot = format!( indoc! {r#"
@@ -186,7 +161,7 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             assert!(ds.page_no > 0);
             assert!(ds.buf.len() == 0);
             assert!(ds.file.is_some());
-            let mut file = ds.file.as_mut().unwrap();
+            let file = ds.file.as_mut().unwrap();
             // doc footer
             let html_doc_foot = format!( indoc! {r#"
                 </body></html>
@@ -325,6 +300,8 @@ This is a rewrite of previous version from python/postscript.
 The Lindenmayer System
 */
 
+pub static ACTIONS:&str = "Ff+-[]|";
+
 pub type Rules<'a> = HashMap<char,&'a str>;
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -369,12 +346,11 @@ fn rules_apply_basic(rules:&Rules, start:&str, order:i32) -> String {
 remove non-action characters from LSys rules
 */
 
-fn rules_minimize(rules:String) -> String {
+fn rules_minimize(rules:&str) -> String {
 
     let mut out = String::new();
-    let actions:&str = "Ff+-[]|";
     for rule in rules.chars() {
-        if actions.contains(rule) {
+        if ACTIONS.contains(rule) {
             out.push(rule);
         }
     }
@@ -394,14 +370,14 @@ fn lsys_apply_rules(lsys:&LSys,order:i32) -> String {
     let basic = rules_apply_basic(&lsys.rules,&lsys.start,order);
     // do post rule substitution
     let post = rules_apply_basic(&lsys.post_rules,&basic,1);
-    rules_minimize(post)
+    rules_minimize(&post)
 }
 
 /*----------------------------------------------------------------------
-Convert fully elaborated LSys rules into a list of drawing actions.
-The drawing actions operate in an abstract space with initial position
-at (x,y)=(0,0) and all actions having relative motion of one unit wrt
-current position.
+Convert fully elaborated LSys rules into a list of drawing actions and
+a bounding box. The drawing actions operate in an abstract space with
+initial position at (x,y)=(0,0) and all actions having relative motion
+of one unit wrt current position.
 */
 
 enum DAct {
@@ -475,7 +451,7 @@ layout box on page.  Units are inches.
 svg output is a string.
 */
 
-fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:BBox) -> String {
+fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     let mut svg = String::new();
     let (px0,py0,px1,py1) = pbb;
     let rules = lsys_apply_rules(lsys,order);
@@ -491,20 +467,33 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:BBox) -> String {
     let x0 = (px0+px1)/2.0 - scale*(ax0+ax1)/2.0;
     let y0 = (py0+py1)/2.0 - scale*(ay0+ay1)/2.0;
 
+    // begin path
+    let svg_path_prelude = format!( indoc! {r#"
+        <path
+            stroke="black="
+            stroke-width="{strokewidth:.4}in"
+            fill="none"
+            d = "
+        "#},
+        strokewidth = pget("linewidth"),
+    );
+    svg.push_str(&svg_path_prelude);
+
+    // iterate over actions convert to path
     let mut col = 0;
     for dact in dacts {
         col += 1;
         match dact {
             DAct::RmoveTo(x,y) => {
-                let xs = scale * (x-x0);
-                let ys = scale * (y-y0);
-                let svgt = format!("m {:.4}in {:.4}in ",x0,y0);
+                let xt = x0 + (scale * x);
+                let yt = y0 + (scale * y);
+                let svgt = format!("M {:7.4}in {:7.4}in ",xt,yt);
                 svg.push_str(&svgt);
             }
             DAct::RlineTo(x,y) => {
-                let xs = scale * (x-x0);
-                let ys = scale * (y-y0);
-                let svgt = format!("l {:.4}in {:.4}in ",x0,y0);
+                let xt = x0 + (scale * x);
+                let yt = y0 + (scale * y);
+                let svgt = format!("L {:7.4}in {:7.4}in ",xt,yt);
                 svg.push_str(&svgt);
             }
         }
@@ -516,7 +505,45 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:BBox) -> String {
     if col > 0 {
         svg.push_str("\n");
     }
+    // end d attribute of path
+    svg.push_str(r#""/>"#);
     svg
+}
+/*----------------------------------------------------------------------
+Draw one page from one LSys
+*/
+
+fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
+    let lb = layout_boxes_make();
+    lsys_draw_order_in_box(&lsys, ds, &lb, 0,"left");
+    //lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
+    //lsys_draw_order_in_box(&lsys, ds, &lb, 2,"right");
+    //lsys_draw_order_in_box(&lsys, ds, &lb, 3,"main");
+    // draw text
+}
+
+fn lsys_draw_order_in_box(
+    lsys:&LSys,
+    ds:& mut DocState,
+    lb:&LayoutBoxes,
+    iorder:usize,
+    ibox:&str            )
+{
+
+    //println!("{lsys:#?}");
+    let mut frag = lsys_draw_basic(
+        &lsys,
+        lsys.order[iorder],
+        lb.get(ibox).unwrap()
+    );
+    let comment = format!( indoc! {r#"
+        <!-- box:{ibox} order:{iorder} -->
+        "#},
+        ibox = ibox,
+        iorder = iorder,
+    );
+    frag.insert_str(0, &comment);
+    doc(ds, DocAct::PageAddFragment(&frag))
 }
 
 /*---------------------------------------------------------------------
@@ -580,10 +607,14 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
                 println!("{:?}", why);
                 println!();
             }
-            Ok(lsys) => {
+            Ok(mut lsys) => {
                 okcnt += 1;
                 //println!("{:#?}",&lsys);
                 //println!("{}",&lsys.title);
+                // make some substitutions
+                if lsys.order.len() == 0 {
+                    lsys.order = vec![1,2,3,4];
+                }
                 out.push(lsys);
             }
         }
@@ -592,6 +623,31 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
         okcnt,okcnt+errcnt);
 
     out
+}
+
+/*----------------------------------------------------------------------
+Tune-able parameters
+*/
+
+static PARMS : [(&str, &str); 3 ] = [
+  ("linewidth",   "0.02"      ),   // inches
+  ("pagewidth",   "8.5"       ),   // inches
+  ("pageheight", "11.0"       ),   // inches
+  //titlefont = "/Times-Bold",
+  //titlesize = 30,
+  //attrfont = "/Arial",
+  //attrsize = 12,
+];
+
+fn pget(key:&str) -> &str {
+    let mut val:&str = "";
+    for (k,v) in PARMS {
+        if k == key {
+            val = v;
+            break;
+        }
+    }
+    val
 }
 
 /*----------------------------------------------------------------------
@@ -606,9 +662,17 @@ fn main() {
     //println!("{:#?}",chunks);
     let lsysv = lsys_from_json_chunks(&chunks);
 
-    let ds = doc_new();
+    // print each example on a page
+    let mut ds = doc_new();
+    doc(&mut ds, DocAct::DocOpenPathTitle(
+        &"lsys_examples.html",
+        &"Lindenmayer System Examples")
+    );
     for lsys in lsysv {
+        doc(&mut ds, DocAct::PageStartComment(&lsys.title));
+        lsys_draw_page(&lsys,&mut ds);
+        doc(&mut ds, DocAct::PageEnd);
+        break;
     }
-
-
+    doc(&mut ds, DocAct::DocClose);
 }
