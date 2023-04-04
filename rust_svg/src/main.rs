@@ -447,25 +447,45 @@ fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
 
 /*----------------------------------------------------------------------
 Produce svg to draw LSys at specified order to fit in specified
-layout box on page.  Units are inches.
-svg output is a string.
+layout box on page.
+
+The units for layout boxes (pbb) are in inches.
+
+The units for drawing actions (Dact) and their associated bounding box
+(abb) are in abstract "steps".
+
+The units used in paths are formally known as "SVG user units" and are
+the same as the so called pixel used in html.  It is defined to be 1/96
+of an inch when printed, which is what is used here.
+
+The geometric mean of the source and target box dimensions (width and
+height) are used to get a scaling factor to best fit the source into
+the target.  This moderates problems with high aspect ratio boxes,
+mostly associated with the source figure, which is out of our control.
+If the euclidean diagonal of box is used for scaling then the figure
+can draw outside of its intended box.  If boxes are nearly square then
+the geometric mean produces the same result as the euclidean diagonal.
 */
 
 fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     let mut svg = String::new();
-    let (px0,py0,px1,py1) = pbb;
+    let (px0,py0,px1,py1) = pbb;    // inch
     let rules = lsys_apply_rules(lsys,order);
     let (dacts,abb) = lsys_dacts_from_rules(lsys,&rules);
-    let (ax0,ay0,ax1,ay1) = abb;
+    let (ax0,ay0,ax1,ay1) = abb;    // step
 
-    // find scale factor
-    let dp = f64::sqrt((px1-px0)*(py1-py0));
-    let da = f64::sqrt((ax1-ax0)*(ay1-ay0));
-    let scale = dp/da;
+    //find scale factors
 
-    // find starting position
-    let x0 = (px0+px1)/2.0 - scale*(ax0+ax1)/2.0;
-    let y0 = (py0+py1)/2.0 - scale*(ay0+ay1)/2.0;
+    let gm_inch = f64::sqrt((px1-px0)*(py1-py0));
+    let gm_step = f64::sqrt((ax1-ax0)*(ay1-ay0));
+    let pixel_per_inch:f64 = pget("pathscale").parse().unwrap();
+    let pixel_per_step = (gm_inch/gm_step) * pixel_per_inch;
+
+    // find starting position in pixels
+    let mut x = (  ((px0+px1)/2.0) * pixel_per_inch  )
+              - (  ((ax0+ax1)/2.0) * pixel_per_step  );
+    let mut y = (  ((py0+py1)/2.0) * pixel_per_inch  )
+              - (  ((ay0+ay1)/2.0) * pixel_per_step  );
 
     // begin path
     let svg_path_prelude = format!( indoc! {r#"
@@ -484,16 +504,16 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     for dact in dacts {
         col += 1;
         match dact {
-            DAct::RmoveTo(x,y) => {
-                let xt = x0 + (scale * x);
-                let yt = y0 + (scale * y);
-                let svgt = format!("M {:7.4}in {:7.4}in ",xt,yt);
+            DAct::RmoveTo(xs,ys) => {
+                x += pixel_per_step * xs;
+                y += pixel_per_step * ys;
+                let svgt = format!("M{:07.2} {:07.2} ",x,y);
                 svg.push_str(&svgt);
             }
-            DAct::RlineTo(x,y) => {
-                let xt = x0 + (scale * x);
-                let yt = y0 + (scale * y);
-                let svgt = format!("L {:7.4}in {:7.4}in ",xt,yt);
+            DAct::RlineTo(xs,ys) => {
+                x += pixel_per_step * xs;
+                y += pixel_per_step * ys;
+                let svgt = format!("L{:07.2} {:07.2} ",x,y);
                 svg.push_str(&svgt);
             }
         }
@@ -515,6 +535,14 @@ Draw one page from one LSys
 
 fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     let lb = layout_boxes_make();
+    let mut svg_lb = layout_boxes_draw(&lb);
+    let lb_comment = format!( indoc! {r#"
+        <!-- layout boxes -->
+        "#}
+    );
+    svg_lb.insert_str(0, &lb_comment);
+    doc(ds, DocAct::PageAddFragment(&svg_lb));
+
     lsys_draw_order_in_box(&lsys, ds, &lb, 0,"left");
     //lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
     //lsys_draw_order_in_box(&lsys, ds, &lb, 2,"right");
@@ -629,10 +657,11 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 Tune-able parameters
 */
 
-static PARMS : [(&str, &str); 3 ] = [
+static PARMS : [(&str, &str); 4 ] = [
   ("linewidth",   "0.02"      ),   // inches
   ("pagewidth",   "8.5"       ),   // inches
   ("pageheight", "11.0"       ),   // inches
+  ("pathscale",  "96"         ),   // units per inch
   //titlefont = "/Times-Bold",
   //titlesize = 30,
   //attrfont = "/Arial",

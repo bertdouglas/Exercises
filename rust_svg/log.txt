@@ -1,3 +1,17 @@
+---------------------------------------------------------------
+2023-04-03 Monday
+
+Took a whack at fixing scaling.
+Using absolute pixels in path.  All positive numbers.
+Still using relative steps in DActs (drawing actions).
+
+Also drawing layout boxes to help see where things are falling.
+
+Have simple output, compact, can see all on one screen.
+Not getting any path drawing.
+Also getting repeat of the doc footer </body></html>
+It shows up twice.
+
 ----------------------------------------------------------------
 2023-04-02 Sunday
 It seems that the path element cannot accept units in inches.
