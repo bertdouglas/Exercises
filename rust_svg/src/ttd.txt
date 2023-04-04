@@ -1,0 +1,36 @@
+fix plants so they are not upside down.
+  the origin of postscript is lower left
+  the origin of svg is upper left
+  so y has flipped
+  check the code for plants to see if there is a '|' at beginning
+  consider rotating everything by setting initial direction +180,
+  see how dragon looks as well
+
+make more fancy
+  get more plants
+  perhaps add color support for plants
+
+write code to display the text parts in their boxes.
+
+need a new scheme for scaling, wildly off on things like the plants
+  and the dragon.  probably need to go back to separate x size and y size and pick
+  the biggest instead of averaging.
+
+the choice of "order" is wrong in many cases.  Need a programmatic way of finding
+the smallest order that draws anything.  I want to see the simplest
+figure in the first box.  And I don't want to have to tune it manually.
+
+redo the tunable parameters section.
+  instead of look up table and parsing, just use static constants
+  or perhaps lazy init.
+
+Change all units to pixels and stop using inches
+
+
+edit top comments for python version
+  ready for showing
+
+create second backup git remote on gitsrv1
+
+
+

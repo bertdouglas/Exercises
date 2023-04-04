@@ -260,7 +260,7 @@ fn layout_boxes_draw(boxes: &LayoutBoxes) -> String {
                 style  = "
                     fill           :  none;
                     stroke         :  black;
-                    stroke-width   :  {strokewidth:.4}in;
+                    stroke-width   :  {strokewidth};
                 "
             />
             "#},
@@ -465,6 +465,10 @@ mostly associated with the source figure, which is out of our control.
 If the euclidean diagonal of box is used for scaling then the figure
 can draw outside of its intended box.  If boxes are nearly square then
 the geometric mean produces the same result as the euclidean diagonal.
+
+The source box has relative drawing starting at origin.  So after
+drawing, the center of the bounding box gives the offset of drawing
+center.
 */
 
 fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
@@ -474,10 +478,14 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     let (dacts,abb) = lsys_dacts_from_rules(lsys,&rules);
     let (ax0,ay0,ax1,ay1) = abb;    // step
 
-    //find scale factors
+    // usage fraction of drawing in layout box
+    let box_usage_frac:f64 = pget("box_usage_frac").parse().unwrap();
 
-    let gm_inch = f64::sqrt((px1-px0)*(py1-py0));
+    // get size of source and target boxes
+    let gm_inch = f64::sqrt((px1-px0)*(py1-py0)) * box_usage_frac;
     let gm_step = f64::sqrt((ax1-ax0)*(ay1-ay0));
+
+    // get scale factors
     let pixel_per_inch:f64 = pget("pathscale").parse().unwrap();
     let pixel_per_step = (gm_inch/gm_step) * pixel_per_inch;
 
@@ -490,8 +498,8 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     // begin path
     let svg_path_prelude = format!( indoc! {r#"
         <path
-            stroke="black="
-            stroke-width="{strokewidth:.4}in"
+            stroke="black"
+            stroke-width="{strokewidth}"
             fill="none"
             d = "
         "#},
@@ -544,9 +552,9 @@ fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     doc(ds, DocAct::PageAddFragment(&svg_lb));
 
     lsys_draw_order_in_box(&lsys, ds, &lb, 0,"left");
-    //lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
-    //lsys_draw_order_in_box(&lsys, ds, &lb, 2,"right");
-    //lsys_draw_order_in_box(&lsys, ds, &lb, 3,"main");
+    lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
+    lsys_draw_order_in_box(&lsys, ds, &lb, 2,"right");
+    lsys_draw_order_in_box(&lsys, ds, &lb, 3,"main");
     // draw text
 }
 
@@ -657,11 +665,12 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 Tune-able parameters
 */
 
-static PARMS : [(&str, &str); 4 ] = [
-  ("linewidth",   "0.02"      ),   // inches
-  ("pagewidth",   "8.5"       ),   // inches
-  ("pageheight", "11.0"       ),   // inches
-  ("pathscale",  "96"         ),   // units per inch
+static PARMS : [(&str, &str); 5 ] = [
+  ( "linewidth"     , "1"      ),   // pixels
+  ( "pagewidth"     , "8.5"    ),   // inches
+  ( "pageheight"    , "11.0"   ),   // inches
+  ( "pathscale"     , "96"     ),   // units per inch
+  ( "box_usage_frac", "0.8"    ),
   //titlefont = "/Times-Bold",
   //titlesize = 30,
   //attrfont = "/Arial",
@@ -701,7 +710,6 @@ fn main() {
         doc(&mut ds, DocAct::PageStartComment(&lsys.title));
         lsys_draw_page(&lsys,&mut ds);
         doc(&mut ds, DocAct::PageEnd);
-        break;
     }
     doc(&mut ds, DocAct::DocClose);
 }

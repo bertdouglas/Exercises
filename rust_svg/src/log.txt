@@ -1,3 +1,25 @@
+------------------------------------------------------------------------
+2023-04-04 Tuesday
+
+Found problem.  Syntax error in stroke attribute.  Unknown color.
+
+Installed chrome "validity" extension.  It did not show any problem. Or
+maybe I couldn't get it to work.  One of those programs where no output
+indicates no problem.  Anyway no help.
+
+Also installed a debian package to validate generic xml.  It did not
+find any error either.  Kind of makes sense.  This is inside of a
+quoted string in attribute of svg path element.  I guess this requires
+specialized svg parser.
+
+Output now showing up almost perfectly aligned in layour box.
+So change to only use perhaps 80 percent of available space.
+
+Doing all curves.  Some bad scaling.  Bad order.  But no crashes.
+Centering is good.  Figures look correct.
+
+Plants are upside down.  This is probably because of the y-swap origin.
+
 ---------------------------------------------------------------
 2023-04-03 Monday
 
