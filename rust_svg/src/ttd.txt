@@ -1,3 +1,6 @@
+Change tuneable global constants to be actual rust global variables.
+Same semantics.  Less code.  Slightly faster.
+
 fix plants so they are not upside down.
   the origin of postscript is lower left
   the origin of svg is upper left

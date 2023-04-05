@@ -101,15 +101,15 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
                 <!-- begin page {page_no}
                      {comment} -->
                 <svg
-                    width="{pagewidth}in"
-                    height="{pageheight}in"
+                    width="{page_width}"
+                    height="{page_height}"
                 >
 
                 "#},
                 page_no = ds.page_no,
                 comment = comment,
-                pagewidth   = pget("pagewidth"),
-                pageheight  = pget("pageheight"),
+                page_width   = PAGE_WIDTH,
+                page_height  = PAGE_HEIGHT,
             );
             ds.buf.append(&mut svg_page_head.into_bytes());
             // new state
@@ -228,9 +228,9 @@ fn layout_boxes_make() -> LayoutBoxes<'static> {
     let yf = vec![0.03, 0.14, 0.20, 0.42, 0.97];
 
     // scale to page size
-    let width:f64  = pget("pagewidth").parse().unwrap();
+    let width:f64  = PAGE_WIDTH;
     let x:Vec<f64> = xf.into_iter().map(|x| x * width).collect();
-    let height:f64 = pget("pageheight").parse().unwrap();
+    let height:f64 = PAGE_HEIGHT;
     let y:Vec<f64> = yf.into_iter().map(|y| y * height).collect();
 
     // make named bounding boxes
@@ -251,21 +251,22 @@ fn layout_boxes_draw(boxes: &LayoutBoxes) -> String {
     for (_k,v) in boxes {
         let s = format!( indoc! {r#"
             <rect
-                x      = "{x0:.4}in"
-                y      = "{y0:.4}in"
-                rx     = "0.1in"
-                ry     = "0.1in"
-                width  = "{w:.4}in"
-                height = "{h:.4}in"
+                x      = "{x0:.4}"
+                y      = "{y0:.4}"
+                rx     = "{box_radius}"
+                ry     = "{box_radius}"
+                width  = "{w:.4}"
+                height = "{h:.4}"
                 style  = "
                     fill           :  none;
                     stroke         :  black;
-                    stroke-width   :  {strokewidth};
+                    stroke-width   :  {stroke_width};
                 "
             />
             "#},
             x0=v.0,y0=v.1,w=v.2-v.0,h=v.3-v.1,
-            strokewidth = pget("linewidth"),
+            stroke_width = STROKE_WIDTH,
+            box_radius = BOX_RADIUS,
         );
         svg.push_str(&s);
     }
@@ -449,8 +450,6 @@ fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
 Produce svg to draw LSys at specified order to fit in specified
 layout box on page.
 
-The units for layout boxes (pbb) are in inches.
-
 The units for drawing actions (Dact) and their associated bounding box
 (abb) are in abstract "steps".
 
@@ -458,13 +457,7 @@ The units used in paths are formally known as "SVG user units" and are
 the same as the so called pixel used in html.  It is defined to be 1/96
 of an inch when printed, which is what is used here.
 
-The geometric mean of the source and target box dimensions (width and
-height) are used to get a scaling factor to best fit the source into
-the target.  This moderates problems with high aspect ratio boxes,
-mostly associated with the source figure, which is out of our control.
-If the euclidean diagonal of box is used for scaling then the figure
-can draw outside of its intended box.  If boxes are nearly square then
-the geometric mean produces the same result as the euclidean diagonal.
+The units for layout boxes (pbb) are also in pixels.
 
 The source box has relative drawing starting at origin.  So after
 drawing, the center of the bounding box gives the offset of drawing
@@ -473,37 +466,38 @@ center.
 
 fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
     let mut svg = String::new();
-    let (px0,py0,px1,py1) = pbb;    // inch
+    let (px0,py0,px1,py1) = pbb;    // pixels
     let rules = lsys_apply_rules(lsys,order);
     let (dacts,abb) = lsys_dacts_from_rules(lsys,&rules);
-    let (ax0,ay0,ax1,ay1) = abb;    // step
+    let (ax0,ay0,ax1,ay1) = abb;    // steps
 
-    // usage fraction of drawing in layout box
-    let box_usage_frac:f64 = pget("box_usage_frac").parse().unwrap();
+    // get x and y size of source and target boxes
+    let px = (px1-px0) * BOX_USAGE_FRACTION;
+    let py = (py1-py0) * BOX_USAGE_FRACTION;
+    let ax = ax1-ax0;
+    let ay = ay1-ay0;
 
-    // get size of source and target boxes
-    let gm_inch = f64::sqrt((px1-px0)*(py1-py0)) * box_usage_frac;
-    let gm_step = f64::sqrt((ax1-ax0)*(ay1-ay0));
+    // get x and y scale factors
+    let sx = px/ax;
+    let sy = py/ay;
 
-    // get scale factors
-    let pixel_per_inch:f64 = pget("pathscale").parse().unwrap();
-    let pixel_per_step = (gm_inch/gm_step) * pixel_per_inch;
+    // pick the smallest scale factor
+    // to avoid going outside the layout box
+    let pixel_per_step = f64::min(sx,sy);
 
     // find starting position in pixels
-    let mut x = (  ((px0+px1)/2.0) * pixel_per_inch  )
-              - (  ((ax0+ax1)/2.0) * pixel_per_step  );
-    let mut y = (  ((py0+py1)/2.0) * pixel_per_inch  )
-              - (  ((ay0+ay1)/2.0) * pixel_per_step  );
+    let mut x = ((px0+px1)/2.0) -  (((ax0+ax1)/2.0) * pixel_per_step);
+    let mut y = ((py0+py1)/2.0) -  (((ay0+ay1)/2.0) * pixel_per_step);
 
     // begin path
     let svg_path_prelude = format!( indoc! {r#"
         <path
             stroke="black"
-            stroke-width="{strokewidth}"
+            stroke-width="{stroke_width}"
             fill="none"
             d = "
         "#},
-        strokewidth = pget("linewidth"),
+        stroke_width = STROKE_WIDTH,
     );
     svg.push_str(&svg_path_prelude);
 
@@ -665,28 +659,12 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 Tune-able parameters
 */
 
-static PARMS : [(&str, &str); 5 ] = [
-  ( "linewidth"     , "1"      ),   // pixels
-  ( "pagewidth"     , "8.5"    ),   // inches
-  ( "pageheight"    , "11.0"   ),   // inches
-  ( "pathscale"     , "96"     ),   // units per inch
-  ( "box_usage_frac", "0.8"    ),
-  //titlefont = "/Times-Bold",
-  //titlesize = 30,
-  //attrfont = "/Arial",
-  //attrsize = 12,
-];
-
-fn pget(key:&str) -> &str {
-    let mut val:&str = "";
-    for (k,v) in PARMS {
-        if k == key {
-            val = v;
-            break;
-        }
-    }
-    val
-}
+static STROKE_WIDTH:f64       =  1.0;                    // pixels
+static PIXEL_PER_INCH:f64     = 96.0;                    // pixel/inch
+static PAGE_WIDTH:f64         =  8.5 * PIXEL_PER_INCH;   // pixels
+static PAGE_HEIGHT:f64        = 11.0 * PIXEL_PER_INCH;   // pixels
+static BOX_USAGE_FRACTION:f64 =  0.8;                    // dimensionless
+static BOX_RADIUS:f64         = 10.0;                    // pixels
 
 /*----------------------------------------------------------------------
 Top level
