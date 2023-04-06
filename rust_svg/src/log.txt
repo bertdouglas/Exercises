@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------
+2023-04-05 Wednesday
+
+Fixed the scaling problems.  Get separate x scale and y scale and
+then pick the smaller.  Everything nicely in box now.
+
+Change all units to pixels.
+
+Change all tunable parameters to use static constants.
+Get rid of pget and its associated table.
+
+------------------------------------------------------------------------
 2023-04-04 Tuesday
 
 Found problem.  Syntax error in stroke attribute.  Unknown color.

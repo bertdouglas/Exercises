@@ -659,7 +659,7 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 Tune-able parameters
 */
 
-static STROKE_WIDTH:f64       =  1.0;                    // pixels
+static STROKE_WIDTH:f64       =  2.0;                    // pixels
 static PIXEL_PER_INCH:f64     = 96.0;                    // pixel/inch
 static PAGE_WIDTH:f64         =  8.5 * PIXEL_PER_INCH;   // pixels
 static PAGE_HEIGHT:f64        = 11.0 * PIXEL_PER_INCH;   // pixels

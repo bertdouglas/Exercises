@@ -1,5 +1,4 @@
-Change tuneable global constants to be actual rust global variables.
-Same semantics.  Less code.  Slightly faster.
+consider putting all the tunable parameters into a struct.
 
 fix plants so they are not upside down.
   the origin of postscript is lower left
@@ -7,7 +6,8 @@ fix plants so they are not upside down.
   so y has flipped
   check the code for plants to see if there is a '|' at beginning
   consider rotating everything by setting initial direction +180,
-  see how dragon looks as well
+  check the dragon against published images
+    it seems to be rotated wrongly
 
 make more fancy
   get more plants
@@ -15,20 +15,9 @@ make more fancy
 
 write code to display the text parts in their boxes.
 
-need a new scheme for scaling, wildly off on things like the plants
-  and the dragon.  probably need to go back to separate x size and y size and pick
-  the biggest instead of averaging.
-
 the choice of "order" is wrong in many cases.  Need a programmatic way of finding
 the smallest order that draws anything.  I want to see the simplest
 figure in the first box.  And I don't want to have to tune it manually.
-
-redo the tunable parameters section.
-  instead of look up table and parsing, just use static constants
-  or perhaps lazy init.
-
-Change all units to pixels and stop using inches
-
 
 edit top comments for python version
   ready for showing
