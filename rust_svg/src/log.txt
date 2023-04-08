@@ -1,4 +1,120 @@
-------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+2023-04-08 Saturday
+
+Add constant having value of -1 or +1 to allow rotation to be always
+counter clockwise as the angle increases just like in math class.  This
+value is simply multiplied by the step-angle before adding to the
+current direction.  Some output platforms have y-axis increasing
+downward (eg svg/html) and others have y-axis increasing upward (eg
+postscript).  This results in opposite directions of rotation.  The
+initial direction is always zero, pointing to positive x for both
+platforms.  So I think this fully compensates for differences in output
+platforms.
+
+Check http links in examples.  Found dead link at ethoberon.
+
+There seems to be something funny with the sierpinsk arrowhead. The
+order 2 is turned 45 degrees from the others.  Does not follow
+wikipedia example. When I copied code from wikipedia, it was also
+rotated. It appears that all odd orders are rotated.
+
+Found that several of differences in appearance between previous python
+and current version are due to different order of expansion. Previous
+version had a flawed attempt to adjust order so that order 1 is first
+order that prints anything.  In particular the dragon looks the same
+now as before.
+
+In output file, sometimes, there are two "end page 11" comments
+emitted. The page header is not emitted on second one, only a bunch of
+path data.  About 60,000 lines of path data. The previous pages only
+amount to 17k lines.  So a bunch extra.
+Get rid of "drop" file.  No difference.
+
+Updated all tools and libraries.  Clean build.
+Problem remains.  Now have three "end page 11" in file.
+
+first end page 11
+--------------------------------
+L0412.13 0508.33 L0418.37 0502.09 L0426.53 0498.71 M0408.75 0516.49 L0416.91 0513.11
+L0425.07 0509.73 L0433.23 0513.11 L0442.06 0513.11 L0450.22 0509.73 M0425.07 0509.73
+L0431.31 0503.49 L0439.47 0500.11 L0448.30 0500.11 M0425.07 0509.73 M0389.50 0545.30
+M0351.00 0638.25 M0351.00 0839.45
+"/>
+</svg>
+<!-- end page 11 -->
+
+</body></html>
+88 L0302.70 0617.55 L0305.76 0614.48 L0307.42 0610.48 L0307.42 0606.15
+M0302.70 0617.55 L0301.04 0613.54 L0301.04 0609.21 L0302.70 0605.21 M0302.70 0617.55
+L0302.70 0613.22 L0302.70 0608.88 L0305.76 0605.82 L0307.42 0601.82 L0307.42 0597.49
+--------------------
+
+second end page 11
+----------------------
+L0451.60 0514.09 L0455.93 0514.09 M0444.53 0509.37 L0448.53 0507.72 L0452.86 0507.72
+L0456.86 0509.37 M0444.53 0509.37 M0421.74 0518.81 M0386.86 0553.70 M0349.10 0644.85
+M0349.10 0842.18
+"/>
+</svg>
+<!-- end page 11 -->
+
+</body></html>
+
+L0368.10 0763.25 M0362.00 0763.25 L0363.51 0761.74 L0365.49 0760.92 L0367.64 0760.92
+M0362.00 0763.25 L0363.51 0761.74 L0365.03 0760.22 L0367.17 0760.22 L0369.15 0759.40
+L0370.67 0757.88 M0365.03 0760.22 L0365.85 0758.24 L0367.37 0756.72 L0369.35 0755.90
+
+----------------------
+
+None of coordinates are repeated from previous figures.
+So buffer copy seems not to be happening.
+Must be going through loop extra times.
+Why was this not seen before?
+
+The string    </body></html>
+is only written from DocClose
+And DocClose is only called once just before program ends.
+
+I think that problem is found.  It happens when you reduce the number of
+examples, which should shrink the output file.  But the output file
+never shrinks.  The first part of the file is being overwritten, if the
+file already exists.  The file is not being truncated to the new length.
+Probably this is a open file option not set correctly.
+
+This is a problem other people have had, like this guy
+    https://ddanilov.me/how-to-overwrite-a-file-in-rust
+
+    The original content of the file was AAAAAAAA and after execution
+    of the program, it unexpectedly became XXXAAAAA rather than just
+    XXX. I was quite surprised because in most of the languages that I
+    am familiar with, when a file is opened with the write ("w") flag,
+    the existing content would be automatically truncated and
+    overwritten. Apparently, to achieve the same in Rust,
+    truncate(true) needs to be added:
+    std::fs::OpenOptions::new().write(true).truncate(true).open("./file")?;
+
+Ok.  I didn't even know this option existed in linux.
+
+Part of reason this was so confusing is because chrome ignores the
+</body></html> tags and keeps on displaying stuff afterwards.
+Unable to find anything relevant on google.
+
+When I "inspected" the document in chrome, I saw that it had moved the
+end tag to after then extra stuff that is after the end tag. No errors
+were flagged.  Apparently there is official html syntax and there is
+real world handling.  The end tag is completely ignored, and inserted
+at end of data.
+
+Downloaded a validator.  It wants a DTD.  Found that there is no DTD for
+HTML5 and there can't be.  Its grammar rules exceed the expressive
+capability of any possible DTD.
+
+Found online validator here:  https://validator.w3.org/nu/#file
+Fixed a couple of small errors.  language and character set.
+Now no errors reported.
+Validator did show error for extra stuff after end tag.
+
+------------------------------------
 2023-04-05 Wednesday
 
 Fixed the scaling problems.  Get separate x scale and y scale and

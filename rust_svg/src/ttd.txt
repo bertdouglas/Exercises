@@ -1,4 +1,19 @@
-consider putting all the tunable parameters into a struct.
+Check output formatting and indenting and commenting.
+Want to look nice.
+
+Double check all output appearance differences from previous python
+version. Consider if it is appropriate to move to scheme where order is
+automatically determined.  Would like to print simplest figure for
+order 1 or order 0.  Try to make this happen.  May require adjusting
+other orders to get pleasing output. This would mean that only the last
+3 orders can be specified.
+
+Indicate when lines from json file are ignored.
+
+There is a bug in output html file.  Near end of file there is text
+showing that looks like an svg path.  Then some of figures are
+repeated. consider putting all the tunable parameters into a struct.
+Seems like a buffer is not being cleared after a write.
 
 fix plants so they are not upside down.
   the origin of postscript is lower left
@@ -15,9 +30,10 @@ make more fancy
 
 write code to display the text parts in their boxes.
 
-the choice of "order" is wrong in many cases.  Need a programmatic way of finding
-the smallest order that draws anything.  I want to see the simplest
-figure in the first box.  And I don't want to have to tune it manually.
+the choice of "order" is wrong in many cases.  Need a programmatic way
+of finding the smallest order that draws anything.  I want to see the
+simplest figure in the first box.  And I don't want to have to tune it
+manually.
 
 edit top comments for python version
   ready for showing

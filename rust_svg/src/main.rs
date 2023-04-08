@@ -63,13 +63,15 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
             assert!(ds.file.is_none());
             // open the file
             ds.file = Some(OpenOptions::new()
-                .write(true).create(true)
+                .write(true).create(true).truncate(true)
                 .open(path).unwrap()
             );
             // document header
             let html_doc_head = format!( indoc! {r#"
                 <!DOCTYPE html>
-                <html><head>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
                     <title>{title}</title>
                 </head><body>
                 <h1>{title}</h1>
@@ -168,14 +170,12 @@ fn doc(ds:& mut DocState, doc_act:DocAct) {
                 "#}
             );
             ds.buf.append(&mut html_doc_foot.into_bytes());
-            // write and close file
+            // write buf to file
             file.write_all(&ds.buf).ok();
-            file.sync_all().ok();
-            std::mem::drop(file);
-            // set new state
+            // Leave state with non-empty buffer
+            // and following, so that any further DocAct will fail.
             ds.indoc = false;
-            ds.buf.clear();
-            ds.file = None;
+            ds.frag_no = 0;
         }
     }
 }
@@ -414,10 +414,10 @@ fn lsys_dacts_from_rules(lsys:&LSys, rules:&str) -> (Vec<DAct>,BBox) {
             dacts.push(DAct::RlineTo(xt,yt));
         }
         else if '+' == rule {
-            d += angle;
+            d += angle * ROTATION;
         }
         else if '-' == rule {
-            d -= angle;
+            d -= angle * ROTATION;
         }
         else if '[' == rule {
             stack.push((d,x,y));
@@ -519,7 +519,7 @@ fn lsys_draw_basic(lsys:&LSys, order:i32, pbb:&BBox) -> String {
                 svg.push_str(&svgt);
             }
         }
-        if col >= 10 {
+        if col >= 5 {
             svg.push_str("\n");
             col = 0;
         }
@@ -659,12 +659,20 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
 Tune-able parameters
 */
 
-static STROKE_WIDTH:f64       =  2.0;                    // pixels
+static STROKE_WIDTH:f64       =  1.5;                    // pixels
 static PIXEL_PER_INCH:f64     = 96.0;                    // pixel/inch
 static PAGE_WIDTH:f64         =  8.5 * PIXEL_PER_INCH;   // pixels
 static PAGE_HEIGHT:f64        = 11.0 * PIXEL_PER_INCH;   // pixels
-static BOX_USAGE_FRACTION:f64 =  0.8;                    // dimensionless
+static BOX_USAGE_FRACTION:f64 =  0.85;                   // dimensionless
 static BOX_RADIUS:f64         = 10.0;                    // pixels
+
+/*
+This keeps rotation always counter clockwise for consistent
+presentation of figures.
+For postscript, which has y axis pointing up, set to +1.0.
+For svg/html, which has y axis pointing down, set to -1.0.
+*/
+static ROTATION:f64           = -1.0;                     // dimensionless
 
 /*----------------------------------------------------------------------
 Top level

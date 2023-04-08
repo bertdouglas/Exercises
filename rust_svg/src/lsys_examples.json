@@ -4,11 +4,12 @@
 {
   "title" : "Hilbert Curve",
   "refs" : [
-    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+    "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
+    "https://en.wikipedia.org/wiki/Hilbert_curve"
   ],
   "angle" : 90.0,
   "start" : "X",
-  "order" : [],
+  "order" : [1,2,3,6],
   "rules" : {
     "X" : "-YF+XFX+FY-",
     "Y" : "+XF-YFY-FX+"
@@ -19,11 +20,12 @@
 {
   "title" : "Koch's Snowflake",
   "refs" : [
-    "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
+    "https://www.cs.unh.edu/~charpov/programming-lsystems.html",
+    "https://en.wikipedia.org/wiki/Koch_snowflake"
   ],
   "angle" : 60.0,
   "start" : "+F--F--F",
-  "order" : [],
+  "order" : [0,1,2,4],
   "rules" : {
     "F" : "F+F--F+F"
   },
@@ -65,19 +67,22 @@
   }
 }
 
-#  QGosper : LSys(
-#    "title" : "Quadratic Gosper",
-#    "refs" : [
-#      "http://paulbourke.net/fractals/lsys/"
-#    ],
-#    "rules" : dict(
-#      "angle" : 90.0,
-#      "order" : [1,2,3,4],
-#      "start" : "YF",
-#      X : "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
-#      Y : "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY",
-#    ),
-#  ),
+# This does not work as in reference
+# Some error somewhere
+#{
+  "title" : "Quadratic Gosper Curve",
+  "refs" : [
+    "http://paulbourke.net/fractals/lsys/"
+  ],
+  "angle" : 90.0,
+  "start" : "-YF",
+  "order" : [],
+  "rules" : {
+    "x" : "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
+    "Y" : "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY"
+  },
+  "post_rules" : {}
+}
 
 {
   "title" : "Sierpinski Diamond",
@@ -85,7 +90,7 @@
     "http://paulbourke.net/fractals/lsys/"
   ],
   "angle" : 90.0,
-  "order" : [2,3,4,5],
+  "order" : [],
   "start" : "F+XF+F+XF",
   "rules" : {
     "X" : "XF-F+F-XF+F+XF-F+F-X"
@@ -96,22 +101,25 @@
 {
   "title" : "Sierpinski Arrowhead",
   "refs" : [
-    "http://paulbourke.net/fractals/lsys/"
+    "http://paulbourke.net/fractals/lsys/",
+    "https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve"
   ],
   "angle" : 60.0,
-  "order" : [2,3,4,8],
-  "start" : "YF",
+  "order" : [1,3,5,7],
+  "start" : "A",
   "rules" : {
-    "X" : "YF+XF+Y",
-    "Y" : "XF-YF-X"
+    "A" : "B-A-B",
+    "B" : "A+B+A"
   },
-  "post_rules" : {}
+  "post_rules" : {
+    "A" : "F",
+    "B" : "F"
+  }
 }
 
 {
   "title" : "Sierpinski Square Snowflake",
   "refs" : [
-    "http://www.ethoberon.ethz.ch/WirthPubl/AD.pdf#page93",
     "https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve",
     "http://mathworld.wolfram.com/SierpinskiCurve.html"
   ],
@@ -131,7 +139,7 @@
     "http://paulbourke.net/fractals/lsys/"
   ],
   "angle" : 36.0,
-  "order" : [],
+  "order" : [0,1,2,3],
   "start" : "F++F++F++F++F",
   "rules" : {
     "F" : "F++F++F|F-F++F"
@@ -142,10 +150,11 @@
 {
   "title" : "Dragon Curve",
   "refs" : [
-    "http://paulbourke.net/fractals/lsys/"
+    "http://paulbourke.net/fractals/lsys/",
+    "https://larryriddle.agnesscott.org/ifs/heighway/heighwayVersions.htm"
   ],
   "angle" : 90.0,
-  "order" : [2,4,6,14],
+  "order" : [1,3,5,13],
   "start" : "+FX",
   "rules" : {
     "X" : "X+YF+",
@@ -160,7 +169,7 @@
     "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
   ],
   "angle" : 22.5,
-  "order" : [],
+  "order" : [1,2,3,6],
   "start" : "++++X",
   "rules" : {
     "X" : "F+[[X]-X]-F[-FX]+X",
@@ -175,7 +184,7 @@
     "https://www.cs.unh.edu/~charpov/programming-lsystems.html"
   ],
   "angle" : 22.5,
-  "order" : [],
+  "order" : [0,1,2,5],
   "start" : "++++F",
   "rules" : {
     "F" : "FF-[-F+F+F]+[+F-F-F]"
