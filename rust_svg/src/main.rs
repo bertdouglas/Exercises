@@ -308,9 +308,9 @@ pub type Rules<'a> = HashMap<char,&'a str>;
 #[derive(Debug, Default, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub struct LSys<'a> {
-    title: String,          // name or description of the lsys
-    refs:  Vec<String>,     // list of places found on the web
-    start: String,          // initial rule
+    title: &'a str,         // name or description of the lsys
+    refs:  Vec<&'a str>,    // list of places found on the web
+    start: &'a str,         // initial rule
     angle: f64,             // the angle step
     order: Vec<i32>,        // list of orders to be displayed
     #[serde(borrow)]
@@ -549,7 +549,57 @@ fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
     lsys_draw_order_in_box(&lsys, ds, &lb, 2,"right");
     lsys_draw_order_in_box(&lsys, ds, &lb, 3,"main");
-    // draw text
+
+    // draw title
+    let td = TextDesc {
+        size   : 30.0,
+        family : "serif",
+        weight : "bold",
+        anchor : "middle",
+        link   : false,
+    };
+    let top = lb.get("top").unwrap();
+    let mut svg = String::new();
+    svg.push_str("<!-- title -->\n");
+    let xmid = (top.2 + top.0)/2.0;
+    svg_draw_text_lines(&mut svg, xmid, top.1, &td, &vec![&lsys.title]);
+
+    // draw references
+    let td = TextDesc {
+        size   : 16.0,
+        family : "sans-serif",
+        weight : "normal",
+        anchor : "start",
+        link   : false,
+    };
+    svg.push_str("<!-- references -->\n");
+    let x = top.0 + 20.0;
+    let y = top.1 + 50.0;
+    svg_draw_text_lines(&mut svg, x, y, &td, &lsys.refs);
+
+    // draw angle and order
+    let td = TextDesc {
+        size   : 16.0,
+        family : "monospace",
+        weight : "normal",
+        anchor : "start",
+        link   : false,
+    };
+    svg.push_str("<!-- angle order -->\n");
+    let a = lb.get("a").unwrap();
+    let x = a.0 + 20.0;
+    let y = a.1 + 10.0;
+    let line1:&str = &format!("Angle : {angle:.1}", angle = lsys.angle);
+    let line2:&str = &format!("Order : {order:?}",  order = lsys.order);
+    let lines = vec![line1,line2];
+    svg_draw_text_lines(&mut svg, x, y, &td, &lines);
+
+    // draw rules
+
+
+
+
+    doc(ds, DocAct:: PageAddFragment(&svg));
 }
 
 fn lsys_draw_order_in_box(
@@ -653,6 +703,45 @@ fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
         okcnt,okcnt+errcnt);
 
     out
+}
+
+/*----------------------------------------------------------------------
+Draw Text lines
+*/
+
+struct TextDesc<'a> {
+    size:f64,          // pixels
+    family:&'a str,    // serif, sans-serif, monospace
+    weight:&'a str ,   // lighter, normal, bold, bolder
+    anchor:&'a str,    // start middle end
+    link: bool,        // this text is a link
+}
+
+fn svg_draw_text_lines(
+    svg: &mut String,
+    x:f64,
+    y:f64,
+    td:&TextDesc,
+    lines:&Vec<&str>
+) {
+    svg.push_str( &format!( indoc! {r#"
+        <text
+            x="{x:.2}" y="{y:.2}" font-size="{size:.1}px"
+            font-family="{family}" font-weight="{weight}"
+            text-anchor="{anchor}"
+        >
+        "#},
+        x = x, y = y, size = td.size,
+        family = td.family, weight = td.weight, anchor=td.anchor
+    ));
+    for line in lines {
+        svg.push_str( &format!( indoc! {r#"
+            <tspan x="{x:.2}" dy="1.2em">{line}</tspan>
+            "#},
+            x = x, line = line,
+        ));
+    }
+    svg.push_str("</text>\n");
 }
 
 /*----------------------------------------------------------------------

@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------
+2023-04-09 Sunday
+
+Worked on drawing the text fields on output page.
+Got title and refs and angle and order.
+Still need to get the rules.
+
+Need to make references into real hyperlinks.
+Examples from web are not working.  Not clickable.
+
+------------------------------------------------------------------------------------------------------------
 2023-04-08 Saturday
 
 Add constant having value of -1 or +1 to allow rotation to be always

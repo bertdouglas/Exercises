@@ -67,21 +67,22 @@
   }
 }
 
-# This does not work as in reference
-# Some error somewhere
-#{
+{
   "title" : "Quadratic Gosper Curve",
   "refs" : [
-    "http://paulbourke.net/fractals/lsys/"
+    "http://www.malsys.cz/Gallery/Detail/ebgFuRmY"
   ],
   "angle" : 90.0,
-  "start" : "-YF",
-  "order" : [],
+  "start" : "-R",
+  "order" : [0,1,2,3],
   "rules" : {
-    "x" : "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
-    "Y" : "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY"
+    "L" : "LL-R-R+L+L-R-RL+R+LLR-L+R+LL+R-LR-R-L+L+RR-",
+    "R" : "+LL-R-R+L+LR+L-RR-L-R+LRR-L-RL+L+R-R-L+L+RR"
   },
-  "post_rules" : {}
+  "post_rules" : {
+    "L" : "F",
+    "R" : "F"
+  }
 }
 
 {

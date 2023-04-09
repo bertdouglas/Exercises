@@ -1,3 +1,7 @@
+Finish code to display the usual text in top few boxes on page.
+
+Make references into real clickable hyperlinks.
+
 Check output formatting and indenting and commenting.
 Want to look nice.
 
@@ -9,20 +13,6 @@ other orders to get pleasing output. This would mean that only the last
 3 orders can be specified.
 
 Indicate when lines from json file are ignored.
-
-There is a bug in output html file.  Near end of file there is text
-showing that looks like an svg path.  Then some of figures are
-repeated. consider putting all the tunable parameters into a struct.
-Seems like a buffer is not being cleared after a write.
-
-fix plants so they are not upside down.
-  the origin of postscript is lower left
-  the origin of svg is upper left
-  so y has flipped
-  check the code for plants to see if there is a '|' at beginning
-  consider rotating everything by setting initial direction +180,
-  check the dragon against published images
-    it seems to be rotated wrongly
 
 make more fancy
   get more plants
@@ -39,6 +29,22 @@ edit top comments for python version
   ready for showing
 
 create second backup git remote on gitsrv1
+
+
+done-------------------------------------------------------------
+There is a bug in output html file.  Near end of file there is text
+showing that looks like an svg path.  Then some of figures are
+repeated. consider putting all the tunable parameters into a struct.
+Seems like a buffer is not being cleared after a write.
+
+fix plants so they are not upside down.
+  the origin of postscript is lower left
+  the origin of svg is upper left
+  so y has flipped
+  check the code for plants to see if there is a '|' at beginning
+  consider rotating everything by setting initial direction +180,
+  check the dragon against published images
+    it seems to be rotated wrongly
 
 
 
