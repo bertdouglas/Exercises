@@ -1,3 +1,7 @@
+I think it is not necessary to manually enter the "post rules".
+These rules could be automatically generated.  Any non action character
+remaining gets converted to F.
+
 Finish code to display the usual text in top few boxes on page.
 
 Make references into real clickable hyperlinks.
