@@ -1,3 +1,9 @@
+Link the html output file from readme.md, so it is easy to access
+with one click.
+
+Undo the github build actions that keep failing.  Not sure what I did
+but undo it.
+
 I think it is not necessary to manually enter the "post rules".
 These rules could be automatically generated.  Any non action character
 remaining gets converted to F.

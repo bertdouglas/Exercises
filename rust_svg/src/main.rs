@@ -224,7 +224,7 @@ fn layout_boxes_make() -> LayoutBoxes<'static> {
 
     // all box edges as fraction of page size
     //             0     1     2     3     4
-    let xf = vec![0.05, 0.35, 0.50, 0.65, 0.95];
+    let xf = vec![0.05, 0.35, 0.35, 0.65, 0.95];
     let yf = vec![0.03, 0.14, 0.20, 0.42, 0.97];
 
     // scale to page size
@@ -303,19 +303,18 @@ The Lindenmayer System
 
 pub static ACTIONS:&str = "Ff+-[]|";
 
-pub type Rules<'a> = HashMap<char,&'a str>;
+pub type Rules = HashMap<char,String>;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
-pub struct LSys<'a> {
-    title: &'a str,         // name or description of the lsys
-    refs:  Vec<&'a str>,    // list of places found on the web
-    start: &'a str,         // initial rule
+pub struct LSys {
+    title: String,          // name or description of the lsys
+    refs:  Vec<String>,     // list of places found on the web
+    start: String,          // initial rule
     angle: f64,             // the angle step
     order: Vec<i32>,        // list of orders to be displayed
-    #[serde(borrow)]
-    rules: Rules<'a>,       // other rules referenced from start rule
-    post_rules: Rules<'a>,  // final rules applied only once
+    rules: Rules,           // other rules referenced from start rule
+    post_rules: Rules,      // final rules applied only once
 }
 
 /*----------------------------------------------------------------------
@@ -562,7 +561,9 @@ fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     let mut svg = String::new();
     svg.push_str("<!-- title -->\n");
     let xmid = (top.2 + top.0)/2.0;
-    svg_draw_text_lines(&mut svg, xmid, top.1, &td, &vec![&lsys.title]);
+    let mut lines = vec![];
+    lines.push(lsys.title.clone());
+    svg_draw_text_lines(&mut svg, xmid, top.1, &td, &lines);
 
     // draw references
     let td = TextDesc {
@@ -570,7 +571,7 @@ fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
         family : "sans-serif",
         weight : "normal",
         anchor : "start",
-        link   : false,
+        link   : true,
     };
     svg.push_str("<!-- references -->\n");
     let x = top.0 + 20.0;
@@ -589,12 +590,24 @@ fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     let a = lb.get("a").unwrap();
     let x = a.0 + 20.0;
     let y = a.1 + 10.0;
-    let line1:&str = &format!("Angle : {angle:.1}", angle = lsys.angle);
-    let line2:&str = &format!("Order : {order:?}",  order = lsys.order);
+    let line1 = format!("Angle : {angle:.1}", angle = lsys.angle);
+    let line2 = format!("Order : {order:?}",  order = lsys.order);
     let lines = vec![line1,line2];
     svg_draw_text_lines(&mut svg, x, y, &td, &lines);
 
     // draw rules
+    svg.push_str("<!-- rules -->\n");
+    let b = lb.get("b").unwrap();
+    let x = b.0 + 20.0;
+    let y = b.1 + 0.0;
+    let mut lines = vec![];
+    let line = format!("Start : {start}", start = &lsys.start);
+    lines.push(line);
+    for (k,v) in &lsys.rules {
+        let line = format!("{k} : {v}", k = k, v = v);
+        lines.push(line);
+    }
+    svg_draw_text_lines(&mut svg, x, y, &td, &lines);
 
 
 
@@ -666,7 +679,7 @@ fn json_to_chunks(json:&str) -> Vec<String> {
 }
 
 // load lsys from json chunks using serde library
-fn lsys_from_json_chunks<'a>(chunks:&'a Vec<String>) -> Vec<LSys<'a>> {
+fn lsys_from_json_chunks(chunks:&Vec<String>) -> Vec<LSys> {
 
     // iterate over chunks of lines with serde
     let mut out:Vec<LSys> = vec!();
@@ -722,7 +735,7 @@ fn svg_draw_text_lines(
     x:f64,
     y:f64,
     td:&TextDesc,
-    lines:&Vec<&str>
+    lines:&Vec<String>
 ) {
     svg.push_str( &format!( indoc! {r#"
         <text
@@ -735,11 +748,21 @@ fn svg_draw_text_lines(
         family = td.family, weight = td.weight, anchor=td.anchor
     ));
     for line in lines {
+        if td.link {
+            svg.push_str( &format!( indoc! {r#"
+                <a xlink:href="{line}">
+                "#},
+                line = line
+            ));
+        }
         svg.push_str( &format!( indoc! {r#"
             <tspan x="{x:.2}" dy="1.2em">{line}</tspan>
             "#},
             x = x, line = line,
         ));
+        if td.link {
+            svg.push_str("</a>\n");
+        }
     }
     svg.push_str("</text>\n");
 }
@@ -752,7 +775,7 @@ static STROKE_WIDTH:f64       =  1.5;                    // pixels
 static PIXEL_PER_INCH:f64     = 96.0;                    // pixel/inch
 static PAGE_WIDTH:f64         =  8.5 * PIXEL_PER_INCH;   // pixels
 static PAGE_HEIGHT:f64        = 11.0 * PIXEL_PER_INCH;   // pixels
-static BOX_USAGE_FRACTION:f64 =  0.85;                   // dimensionless
+static BOX_USAGE_FRACTION:f64 =  0.90;                   // dimensionless
 static BOX_RADIUS:f64         = 10.0;                    // pixels
 
 /*
