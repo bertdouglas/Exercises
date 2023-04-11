@@ -1,7 +1,6 @@
 # Lindenmayer Systems Interpreter and Examples
 
-The final pretty output can be found here:
-- https://github.com/bertdouglas/Lindenmayer/blob/master/docs/lsys-examples.pdf
+To skip straight to the results: [click here](http://htmlpreview.github.io/?https://github.com/bertdouglas/Lindenmayer/blob/master/rust_svg/lsys_examples.html)
 
 I happened to encounter a reference to the book, "The Algorithmic Beauty of Plants",
 and I became interested in Lindenmayer Systems.  I saw how the L-system
@@ -25,5 +24,5 @@ A few references:
 - https://en.wikipedia.org/wiki/The_Algorithmic_Beauty_of_Plants
 - https://en.wikipedia.org/wiki/Algorithms_%2B_Data_Structures_%3D_Programs
 
-Copyright: 2019 Bert Douglas
+Copyright: 2019-2023 Bert Douglas
 SPDX-License-Identifier: MIT
