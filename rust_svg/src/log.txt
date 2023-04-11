@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------
+2023-04-11 Tuesday
+
+Got it working good enough to show to others.
+Now producing good output.
+Links are clickable.
+Formatting looks good.
+All text showing.
+Still a bunch of items on ttd list.
+
+------------------------------------------------------------------------------------------------------------
 2023-04-09 Sunday
 
 Worked on drawing the text fields on output page.
