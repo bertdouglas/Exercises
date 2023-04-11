@@ -536,13 +536,17 @@ Draw one page from one LSys
 
 fn lsys_draw_page(lsys:&LSys,ds:& mut DocState) {
     let lb = layout_boxes_make();
-    let mut svg_lb = layout_boxes_draw(&lb);
-    let lb_comment = format!( indoc! {r#"
-        <!-- layout boxes -->
-        "#}
-    );
-    svg_lb.insert_str(0, &lb_comment);
-    doc(ds, DocAct::PageAddFragment(&svg_lb));
+
+    // show layout boxes or not
+    if false {
+        let mut svg_lb = layout_boxes_draw(&lb);
+        let lb_comment = format!( indoc! {r#"
+            <!-- layout boxes -->
+            "#}
+        );
+        svg_lb.insert_str(0, &lb_comment);
+        doc(ds, DocAct::PageAddFragment(&svg_lb));
+    }
 
     lsys_draw_order_in_box(&lsys, ds, &lb, 0,"left");
     lsys_draw_order_in_box(&lsys, ds, &lb, 1,"center");
