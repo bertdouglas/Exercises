@@ -16,8 +16,9 @@ using L-systems.  Then I added a handful of other curves.
 L-systems are a merger of concepts from turtle graphics and programming language grammars.
 Grammatical productions are applied recursively to generate drawing primitives.
 
-Here I have coded an interpreter for L-systems, written in python and
-generating output in postscript.
+Originally, I implemented an interpreter for L-Systems, written in python and producing
+output in postscript.  Later I implemented another version, written in Rust and
+producing output in SVG wrapped in Html.
 
 A few references:
 - https://en.wikipedia.org/wiki/L-system
